@@ -6,7 +6,6 @@
  Application of Client-side Cryptography for Secure File Transfers
   </p>
   
-  
 
    
 <h4>
