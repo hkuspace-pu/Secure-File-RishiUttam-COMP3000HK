@@ -1,5 +1,4 @@
 <div align="center">
-
   <img src="client/src/assets/images/tree.svg" alt="logo" width="200" height="auto" />
   <h1>COMP3000HK 2023/24 FINAL YEAR CYBER SECRUITY PROJECT</h1>
  <h2>Project Title</h2> 
