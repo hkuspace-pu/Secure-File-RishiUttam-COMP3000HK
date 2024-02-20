@@ -11,4 +11,4 @@ function hash(input) {
    
 }
 
-console.log(hash('helloWorld!!sadfsdsdd'))
+console.log(hash('helloWorld!!'))
