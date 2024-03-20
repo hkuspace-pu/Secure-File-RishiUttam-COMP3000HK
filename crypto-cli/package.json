@@ -8,7 +8,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "bin": {
-    "crypto-cli": "./index.js"
+    "crypto": "./index.js"
   },
   "author": "Rishi",
   "license": "ISC",
