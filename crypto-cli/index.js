@@ -10,6 +10,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import * as url from 'node:url';
+import * as p from '@clack/prompts'
+import color from 'picocolors';
 const __filename = url.fileURLToPath(import.meta.url);
 inquirer.registerPrompt('file-tree-selection', inquirerFileTreeSelection)
 
@@ -18,22 +20,94 @@ const keys = Buffer.from('81ad9de199b2af85dbc13cf3a88e5c8cec4c80b5b19c28dff0a655
 const ivs = Buffer.from('dbb849b69186c8e1245f8306cdf0fe90','hex')
 
 console.log(
-  chalk.yellow(figlet.textSync("Secure File - Rishi Final Year Project", { horizontalLayout: "full" }))
+  chalk.yellow(figlet.textSync("Rishi Final Year Project", { horizontalLayout: "full" }))
 );
 
 async function askEncryptOrDecrypt() {
-  const result = await inquirer.prompt([
+  console.clear();
+  p.intro(`${color.bgCyan(color.black('Secure File Encryption - Author Rishi Uttam: v0.1'))}`);
+
+  const group = await p.group(
     {
-    type:'list',
-    name: 'encryptOrDecrypt',
-    message: 'Would you like to encrypt or decrypt?',
-    choices: [
-      'Encrypt',
-      'Decrypt'
-    ]
+      // const shouldContinue = await confirm({
+      //   message: 'Do you want to continue?',
+      // });
+
+      // path: ({results}) => 
+      // p.path({
+      //   type: 'select',
+      //   message: 'Pick a project:',
+      //   initialValue: process.cwd(),
+      //   onlyShowDir: true,
+      //   maxItems: 12
+      // }),
+
+     
+      encryptDecrypt: ({ results }) =>
+        p.select({
+          message: `Would you like to encrypt or decrypt?`,
+          options: [
+            { value: 1, label: 'Encrypt' },
+            { value: 0, label: 'Decrypt' },
+    
+          ],
+        }),
+        selectFile: ({results}) => 
+        selectFile(),
+      // name: () => p.text({ message: 'What is your name?' }),
+      // age: () => p.text({ message: 'What is your age?' }),
+      
+    },
+    {
+      // On Cancel callback that wraps the group
+      // So if the user cancels one of the prompts in the group this function will be called
+      onCancel: ({ results }) => {
+        p.cancel('Operation cancelled.');
+        process.exit(0);
+      },
     }
-  ])
-  return result.encryptOrDecrypt
+  );
+
+
+
+
+
+  const meaning = await p.text({
+    message: 'What is the meaning of life?',
+    placeholder: 'Not sure',
+    initialValue: '42',
+    validate(value) {
+      if (value.length === 0) return `Value is required!`;
+    },
+  });
+
+  const shouldContinue = await p.confirm({
+    message: 'Do you want to continue?',
+  });
+
+  p.intro(`Secure File - Encryption/Decryption Tool`);
+  // Do stuff
+  p.outro(`You're all set!`);
+
+  // const value = await p.text(/* TODO */);
+
+  // if (p.isCancel(value)) {
+  //   cancel('Operation cancelled.');
+  //   process.exit(0);
+  // }
+  
+  // const result = await inquirer.prompt([
+  //   {
+  //   type:'list',
+  //   name: 'encryptOrDecrypt',
+  //   message: 'Would you like to encrypt or decrypt?',
+  //   choices: [
+  //     'Encrypt',
+  //     'Decrypt'
+  //   ]
+  //   }
+  // ])
+  // return result.encryptOrDecrypt
 }
 
 
@@ -62,7 +136,7 @@ async function selectFile() {
 }
 
 askEncryptOrDecrypt()
-.then(encryptOrDecryptAnswer => encryptOrDecryptAnswer == 'Encrypt' ? encryptFile() : decryptFile() )
+// .then(encryptOrDecryptAnswer => encryptOrDecryptAnswer == 'Encrypt' ? encryptFile() : decryptFile() )
 // .then(selectFile())
 // .then(fileName => encryptFile(fileName,key,iv))
 
