@@ -13,6 +13,9 @@ import * as url from 'node:url';
 import * as p from '@clack/prompts'
 import color from 'picocolors';
 import { Performance } from "perf_hooks";
+import {pipeline} from 'stream';
+import {promisify} from 'util';
+import zlib from 'zlib';
 
 
 const __filename = url.fileURLToPath(import.meta.url);
@@ -128,9 +131,11 @@ async function run() {
             { value: 'CCM', label: 'CCM', hint: 'Counter with CBC-MAC' },
           ]
         }),
+        compressOption:  () =>
+         p.confirm({
+          message: 'Would you like to compress the file before encryption?',
+         }),
 
-
-        
         confirm:  ({ results }) => {
           console.log(results)
           return p.confirm({
@@ -310,27 +315,48 @@ async function encryptFile(group) {
     key = crypto.randomBytes(32)
   }
   iv = crypto.randomBytes(16);
-  const readStream = fs.createReadStream(group.selectFile,{highWaterMark: 256 * 1024})
+  const readStream = fs.createReadStream(group.selectFile,{highWaterMark: 64 * 1024})
   const cipherAlgorithm = `${group.startEncrypt}-${group.selectBitRate}-${group.selectMode}`.toLowerCase()
   console.log('Using : ',cipherAlgorithm)
   const cipher = crypto.createCipheriv(cipherAlgorithm, key, iv);
-  const writeStream = fs.createWriteStream(path.join(path.dirname(group.selectFile), 'encrypted_' + path.basename(group.selectFile)), { highWaterMark: 256 * 1024 });
-   readStream.on('data', (chunk) => console.log('data read chunk', chunk.length))
+  const writeStream = fs.createWriteStream(path.join(path.dirname(group.selectFile), 'encrypted_' + path.basename(group.selectFile)), { highWaterMark: 64 * 1024 });
+  //  readStream.on('data', (chunk) => console.log('data read chunk', chunk.length))
   //  cipher.on('data', (chunk) => console.log('data encrypted', chunk.length));
 
-  return new Promise((resolve, reject) => {
-    readStream.pipe(cipher)
-      .pipe(writeStream)
-      .on('finish', () => {
+  // return new Promise((resolve, reject) => {
+  //   readStream.pipe(cipher)
+  //     .pipe(writeStream)
+  //     .on('finish', () => {
       
-        resolve()
-      })
-      .on('error', (error) => {
-        console.error("error")
-        reject(error);
+  //       resolve()
+  //     })
+  //     .on('error', (error) => {
+  //       console.error("error")
+  //       reject(error);
 
-      })
-  })
+  //     })
+  // })
+
+  //Changed to using a pipeline
+  const gzip = zlib.createGzip();
+
+  const pipelineAsync = promisify(pipeline);
+  const streams = [readStream, cipher, writeStream]
+  if (group.compressOption) {
+    const gzip = zlib.createGzip();
+    streams.splice(1, 0, gzip);  // Insert gzip at index 1
+  }
+  try {
+    // streams.forEach((stream, index) => {
+    //   console.log(`Stream ${index}: ${stream.constructor.name}`);
+    // });
+  await pipelineAsync(...streams)
+ console.log('Pipeline finished')
+  }catch(e) {
+    console.log('Error:Pipeline Failed', e)
+  }
+
+
 }
 
 // encryptFile(filePath, key,iv);
