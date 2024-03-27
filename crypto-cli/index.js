@@ -4,7 +4,6 @@ import { program } from "commander";//taking command line args
 import chalk from "chalk"; //for colors
 import inquirer from "inquirer"; `` //asking questions
 import inquirerFileTreeSelection from 'inquirer-file-tree-selection-prompt'
-import ora from "ora";
 import figlet from "figlet";
 import * as fs from 'fs';
 import * as path from 'path';
@@ -13,10 +12,11 @@ import * as url from 'node:url';
 import * as p from '@clack/prompts'
 import color from 'picocolors';
 import { Performance } from "perf_hooks";
-import {pipeline} from 'stream';
-import {promisify} from 'util';
+import { pipeline, Stream, Transform } from 'stream';
+import { promisify } from 'util';
 import zlib from 'zlib';
-
+import * as progress from 'cli-progress';
+import prettyBytes from "pretty-bytes";
 
 const __filename = url.fileURLToPath(import.meta.url);
 inquirer.registerPrompt('file-tree-selection', inquirerFileTreeSelection)
@@ -29,6 +29,24 @@ inquirer.registerPrompt('file-tree-selection', inquirerFileTreeSelection)
 
 let key
 let iv
+let totalSize = 0
+let totalBytes = 0
+let totalChunks = 0
+let cipherAlgorithm = ''
+let bar = new progress.SingleBar({
+  format: '|' + chalk.blue('{bar}') + `| {percentage}% || {value}/{total} Bytes || Chunks: {currentChunk}/{totalChunks} || {message}`,
+  barCompleteChar: '\u2588',
+  barIncompleteChar: '\u2591',
+  hideCursor: true
+}, progress.Presets.shades_classic);
+
+// let bar2 = new progress.SingleBar({
+//   format: 'Progress|' + chalk.blue('{bar}') + `| {percentage}% || {value}/{total} Bytes || Chunks: {currentChunk}/{totalChunks}`,
+//   barCompleteChar: '\u2588',
+//   barIncompleteChar: '\u2591',
+//   hideCursor: true
+// }, progress.Presets.shades_classic);
+
 
 console.log(
   chalk.yellow(figlet.textSync("Rishi Final Year Project", { horizontalLayout: "full" }))
@@ -40,32 +58,11 @@ async function run() {
   p.intro(`${color.bgCyan(color.black('Secure File Encryption - Author Rishi Uttam: v0.1'))}`);
 
   const availableCiphers = crypto.getCiphers();
-  // console.dir(availableCiphers, { 'maxArrayLength': null });
-  // const uniqueCiphers = [...new Set(availableCiphers.map(cipher => cipher.match(/^\D+/)[0]))];
-  // const cipherOptions = uniqueCiphers.map(cipher => ({ value: cipher, label: cipher }));
 
-
-
-  // console.log(cipherDetails);
-  //get a list of available ciphers, but without the bits and the mode of operation.
-
-
-
-  // console.log(global.inspect(crypto.getCiphers()))
-  // console.log(crypto.getHashes())
 
   const group = await p.group(
     {
 
-
-      // path: ({results}) => 
-      // p.path({
-      //   type: 'select',
-      //   message: 'Pick a project:',
-      //   initialValue: process.cwd(),
-      //   onlyShowDir: true,
-      //   maxItems: 12
-      // }),
 
 
       encryptDecrypt: ({ results }) =>
@@ -84,7 +81,7 @@ async function run() {
           return decryptFile()
         }
       },
-      startEncrypt:  () =>
+      startEncrypt: () =>
         p.select({
           message: `Which Cipher would you like to use?`,
           options: [
@@ -110,7 +107,7 @@ async function run() {
       // console.log(`Time taken to execute add function is ${end - start}ms.`);
       //   s.stop("Done!")
 
-      selectBitRate:  () =>
+      selectBitRate: () =>
         p.select({
           message: `Select Bit Rate`,
           options: [
@@ -119,7 +116,7 @@ async function run() {
             { value: 256, label: '256' },
           ],
         }),
-      selectMode:  () =>
+      selectMode: () =>
         p.select({
           message: 'Select Mode of Operation',
           options: [
@@ -131,24 +128,36 @@ async function run() {
             { value: 'CCM', label: 'CCM', hint: 'Counter with CBC-MAC' },
           ]
         }),
-        compressOption:  () =>
-         p.confirm({
+
+      BackpressureBufferSize: () =>
+        p.select({
+          message: 'Select Backpressure Buffer Size',
+          options: [
+            { value: 16 * 1024, label: '16KB' },
+            { value: 32 * 1024, label: '32KB' },
+            { value: 64 * 1024, label: '64KB' },
+            { value: 128 * 1024, label: '128KB' },
+            { value: 256 * 1024, label: '256KB' },
+          ],
+        }),
+      compressOption: () =>
+        p.confirm({
           message: 'Would you like to compress the file before encryption?',
-         }),
+        }),
 
-        confirm:  ({ results }) => {
-          console.log(results)
-          return p.confirm({
-            message: 'Are you sure you want to proceed?',
-          });
+      confirm: ({ results }) => {
+        console.table(results)
+        return p.confirm({
+          message: 'Are you sure you want to proceed?',
+        });
 
-        },
-      
+      },
 
 
-        
 
-          
+
+
+
       // On Cancel callback that wraps the group
       // So if the user cancels one of the prompts in the group this function will be called
     },
@@ -160,18 +169,20 @@ async function run() {
     }
   );
 
-  if (group.confirm)  {
+
+
+  if (group.confirm) {
     const s = p.spinner()
-    s.start('Encrypting...')
+    // s.start('Working...');
     try {
 
       const start = performance.now();
-     
-    await encryptFile(group)
-    const end = performance.now()
-    console.log(`Time taken encrypt ${(end - start).toFixed(3)}ms.`);
-    s.stop('Done!')
-    }catch(e) {
+
+      await encryptFile(group)
+      const end = performance.now()
+      console.log(`Time taken encrypt ${(end - start).toFixed(3)}ms.`);
+      // s.stop('Done!')
+    } catch (e) {
       console.log('Error:', e.code)
       s.stop('Failed!')
     }
@@ -179,41 +190,7 @@ async function run() {
 
 
 
-  // const meaning = await p.text({
-  //   message: 'What is the meaning of life?',
-  //   placeholder: 'Not sure',
-  //   initialValue: '42',
-  //   validate(value) {
-  //     if (value.length === 0) return `Value is required!`;
-  //   },
-  // });
 
-  // const shouldContinue = await p.confirm({
-  //   message: 'Do you want to continue?',
-  // });
-
-  // Do stuff
-  // p.outro(`You're all set!`);
-
-  // const value = await p.text(/* TODO */);
-
-  // if (p.isCancel(value)) {
-  //   cancel('Operation cancelled.');
-  //   process.exit(0);
-  // }
-
-  // const result = await inquirer.prompt([
-  //   {
-  //   type:'list',
-  //   name: 'encryptOrDecrypt',
-  //   message: 'Would you like to encrypt or decrypt?',
-  //   choices: [
-  //     'Encrypt',
-  //     'Decrypt'
-  //   ]
-  //   }
-  // ])
-  // return result.encryptOrDecrypt
 }
 
 
@@ -242,64 +219,10 @@ async function selectFile() {
 }
 
 run()
-.catch((error) => {
-  console.log('Error:', error.message)
-})
+  .catch((error) => {
+    console.log('Error:', error.message)
+  })
 
-// .then(encryptOrDecryptAnswer => encryptOrDecryptAnswer == 'Encrypt' ? encryptFile() : decryptFile() )
-// .then(selectFile())
-// .then(fileName => encryptFile(fileName,key,iv))
-
-
-// encryptFile()
-
-
-
-
-
-// program
-//   .version('1.0.0')
-//   .description('A simple CLI app using Commander.js');
-//   program
-//   .command('greet <name>')
-//   program.parse(process.argv);
-// const key = crypto.randomBytes(32);
-// const iv = crypto.randomBytes(16) // Key for AES-256 is 32 bytes
-
-
-
-
-
-// program
-//   .version("1.0.0")
-//   .description("My Node CLI")
-//   .option("-n, --name <type>", "Add your name")
-//   .action((options) => {
-//     console.log(`Hey, ${options.name}!`);
-//     console.log(chalk.blue(`Hey, ${options.name}!`));
-//     console.log(chalk.green(`Hey, ${options.name}!`));
-//     console.log(chalk.red(`Hey, ${options.name}!`));
-
-//     inquirer
-//     .prompt([
-//       {
-//         type: "input",
-//         name: "name",
-//         message: "What's your name?",
-//       },
-//     ])
-//     .then((answers) => {
-//       const spinner = ora(`Doing ...`).start(); // Start the spinner
-//       setTimeout(() => {
-//         spinner.succeed(chalk.green("Done!"));
-//         console.log(chalk.green(`Hey there, ${answers.name}!`));
-//       }, 3000);
-
-
-//     });
-//   });
-
-//   program.parse(process.argv);
 
 
 
@@ -315,54 +238,107 @@ async function encryptFile(group) {
     key = crypto.randomBytes(32)
   }
   iv = crypto.randomBytes(16);
-  const readStream = fs.createReadStream(group.selectFile,{highWaterMark: 64 * 1024})
-  const cipherAlgorithm = `${group.startEncrypt}-${group.selectBitRate}-${group.selectMode}`.toLowerCase()
-  console.log('Using : ',cipherAlgorithm)
+  const readStream = fs.createReadStream(group.selectFile, { highWaterMark: group.BackpressureBufferSize })
+  cipherAlgorithm = `${group.startEncrypt}-${group.selectBitRate}-${group.selectMode}`.toLowerCase()
+  console.log('Using : ', cipherAlgorithm)
+  console.log(`\nReading => ${group.compressOption ? 'Compression => ' : ''}Encryption => Writing`)
   const cipher = crypto.createCipheriv(cipherAlgorithm, key, iv);
-  const writeStream = fs.createWriteStream(path.join(path.dirname(group.selectFile), 'encrypted_' + path.basename(group.selectFile)), { highWaterMark: 64 * 1024 });
-  //  readStream.on('data', (chunk) => console.log('data read chunk', chunk.length))
-  //  cipher.on('data', (chunk) => console.log('data encrypted', chunk.length));
+  const writeStream = fs.createWriteStream(path.join(path.dirname(group.selectFile), group.compressOption ? path.basename(group.selectFile)+'.enc.gz' : path.basename(group.selectFile)+'.enc' ), { highWaterMark: 64 * 1024 });
 
-  // return new Promise((resolve, reject) => {
-  //   readStream.pipe(cipher)
-  //     .pipe(writeStream)
-  //     .on('finish', () => {
-      
-  //       resolve()
-  //     })
-  //     .on('error', (error) => {
-  //       console.error("error")
-  //       reject(error);
 
-  //     })
-  // })
 
-  //Changed to using a pipeline
-  const gzip = zlib.createGzip();
-
+  let writeSize = 0;
+  totalSize = fs.statSync(group.selectFile).size; 
   const pipelineAsync = promisify(pipeline);
-  const streams = [readStream, cipher, writeStream]
+  const progress = passThroughStream();
+  const streams = [readStream, cipher, progress, writeStream,]
   if (group.compressOption) {
+
+    // totalSize = fs.statSync(group.selectFile).size;
     const gzip = zlib.createGzip();
+
+
+  
     streams.splice(1, 0, gzip);  // Insert gzip at index 1
   }
   try {
-    // streams.forEach((stream, index) => {
-    //   console.log(`Stream ${index}: ${stream.constructor.name}`);
-    // });
-  await pipelineAsync(...streams)
- console.log('Pipeline finished')
-  }catch(e) {
+    //Concurrently reading, compressing, encrypting and writing to file.
+    // bar.start(totalSize, 0);
+
+
+    totalChunks = Math.ceil(totalSize / group.BackpressureBufferSize)
+    let currentChunk = 0;
+    bar.start(totalSize, 0)
+    progress.on('data', (chunk) => {
+      totalBytes += chunk.length;
+      currentChunk++
+      let message = `Encrypting ${prettyBytes(chunk.length)}`
+      // bar.update(totalBytes, { currentChunk, totalChunks });
+      bar.update(totalBytes, group.compressOption ? { currentChunk, currentChunk,message } : { currentChunk, totalChunks,message });
+    })
+
+    writeStream.on('close', () => {
+      console.log('\nWrite Stream Closed')
+      const fileLocation = path.join(path.dirname(group.selectFile), group.compressOption ? path.basename(group.selectFile)+'.enc.gz' : path.basename(group.selectFile)+'.enc')
+      console.log('File Location', fileLocation)
+      fs.appendFileSync(fileLocation, addMetaData());
+    
+    })
+    writeStream.on('finish', () => {
+      bar.update(totalSize)
+    
+      bar.stop();
+    })
+    await pipelineAsync(...streams)
+     console.log('\nPipeline finished')
+     let log = logCompressionStats(totalSize,totalBytes)
+     log.savingsBytes = prettyBytes(log.savingsBytes)
+     log.savingsPct = `${log.savingsPct}%`
+    console.table(log)
+  } catch (e) {
     console.log('Error:Pipeline Failed', e)
+  } finally {
+
   }
 
 
 }
 
+// create a function that adds the meta data such as the algo used, iv, to the start of the encrypted file.
+function addMetaData() {
+  let metaData = {
+    algorithm: cipherAlgorithm,
+    iv: iv.toString('hex'),
+    timestamp: new Date().toISOString()
+  }
+  return JSON.stringify(metaData);
+
+ r
+}
+
+
 // encryptFile(filePath, key,iv);
 
 
+//PASS THROUGH STREAM
+function passThroughStream() {
+  let progress = new Transform({
+    transform(chunk, encoding, callback) {
+      callback(null, chunk);
+    }
+  });
+ progress.on('finish', () => {
+  const metaData = addMetaData()
+ })
+  return progress;
+}
 
+function logCompressionStats(originalSize,compressedSize) {
+  const ratio = compressedSize / originalSize;
+  const savingsBytes = originalSize - compressedSize;
+  const savingsPct = Math.round((savingsBytes / originalSize) * 100);
+  return {savingsBytes,savingsPct}
+}
 
 function decryptFile(key, iv) {
   console.log('CALLING DECRUPT')
@@ -395,6 +371,7 @@ function decryptFile(key, iv) {
 
   writeStream.on('finish', () => {
     console.log('Decryption finished')
+
   })
 
 
