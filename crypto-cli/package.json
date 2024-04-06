@@ -1,6 +1,6 @@
 {
-  "type": "module",
   "name": "crypto-cli",
+  "type": "module",
   "version": "1.0.0",
   "description": "Client-side Encryption CLI",
   "main": "index.js",

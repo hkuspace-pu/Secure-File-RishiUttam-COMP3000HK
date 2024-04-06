@@ -6,14 +6,29 @@ const fileInputDecrypt = document.getElementById('fileInputDecrypt');
 const encryptButton = document.getElementById('encryptButton');
 const decryptButton = document.getElementById('decryptButton');
 let savedIV
+let encryptedBlob
+let progress
+const chunkSize  = 1024 // Size of each chunk in bytes
+
+
+
 
 decryptButton.addEventListener('click', async () => {
     console.log('Starting decryption process')
+    resetDownloadLink()
     const file = fileInputDecrypt.files[0];
+
     const key = await deriveKey();
     try {
+        
+
+        
     const decryptedFile = await decryptFile(file, key);
-        //allow the user to download the decrypted file
+
+    
+    
+    
+    //allow the user to download the decrypted file
     const decryptedBlob = new Blob([decryptedFile], { type: 'application/octet-stream' });
     const decryptedBlobUrl = URL.createObjectURL(decryptedBlob);
     const downloadLink = document.getElementById('downloadLink');
@@ -29,9 +44,28 @@ decryptButton.addEventListener('click', async () => {
 encryptButton.addEventListener('click', async () => {
     const key = await deriveKey();
     const file = fileInput.files[0];
+
+
+    // const response = await fetch(URL.createObjectURL(file))
+    // const reader = response.body.getReader();   
+
+
+    // const encryptionStream = await createEncryptionStream(key, generateIV() );
+    // console.log('encrypted stream', encryptionStream)
+    // // const encryptedStream = reader.readable.pipeThrough(encryptionStream);
+    // const encryptedStream = response.body.pipeThrough(encryptionStream);
+
+
+//    console.log('file response', response)
+//     const totalChunks = Math.ceil(file.size / chunkSize);
+//     console.log('Total chunks:', totalChunks);
+
+
     const encryptedFile = await encryptFile(file, key, generateIV());
-    //allow the user to download the encrypted file
-    const encryptedBlob = new Blob([encryptedFile], { type: 'application/octet-stream' });
+
+
+    // allow the user to download the encrypted file
+    encryptedBlob = new Blob([encryptedFile], { type: 'application/octet-stream' });
     const encryptedBlobUrl = URL.createObjectURL(encryptedBlob);
     const downloadLink = document.getElementById('downloadLink');
     downloadLink.href = encryptedBlobUrl;
@@ -44,10 +78,14 @@ encryptButton.addEventListener('click', async () => {
 //function to remove the download link href, and display
 function resetDownloadLink() {
     const downloadLink = document.getElementById('downloadLink');
+
     downloadLink.style.display = 'none';
     downloadLink.href = '';
-    URL.revokeObjectURL(encryptedBlobUrl);
+    // URL.revokeObjectURL(encryptedBlobUrl);
+   
 }
+
+
 
 
 //generate random key and iv
@@ -58,44 +96,75 @@ savedIV = iv
 return iv;
 }   
 
-const key = await crypto.subtle.generateKey({
-    name: 'AES-GCM',
-    length: 256
-},
-    true,
-    ['encrypt', 'decrypt']
-);
+// async function generateKey() {
+// return await crypto.subtle.generateKey({
+//     name: 'AES-GCM',
+//     length: 256
+// },
+//     true,
+//     ['encrypt', 'decrypt']
+// );
+// }
 
-console.log(key)
+// console.log(key)
 //function to encrypt a file using the key using aes-gcm mode
 async function encryptFile(file, key, iv) {
     const fileBuffer = await file.arrayBuffer();
-    const fileUint8Array = new Uint8Array(fileBuffer);
+
     const encryptedFile = await crypto.subtle.encrypt(
         {
             name: 'AES-GCM',
             iv: iv
         },
         key,
-        fileUint8Array
+        fileBuffer
+      
     );
     return encryptedFile;
 }
+
+// NEW WAY DOES IT WORK?
+async function createEncryptionStream(key, iv) {
+    return new TransformStream({
+        async transform(chunk, controller) {
+            const encryptedChunk = await crypto.subtle.encrypt(
+                {
+                    name: 'AES-GCM',
+                    iv: iv
+                },
+                key,
+                chunk
+            );
+            controller.enqueue(encryptedChunk);
+        }
+    });
+}
+
+
+// USE THE FILE READER API TO READ THE FILE IN CHUNKS
+const readChunk = async() => {
+    const r = new FileReader();
+    const blob = file.slice(offset,chunkSize + offset)
+    r.onload = function() {
+        console.log('chunk read')
+    }
+    r.readAsArrayBuffer(blob)
+}
+
 
 //function to decrypt a file using the key using aes-gcm mode
 async function decryptFile(file, key) {
     try {
     const fileBuffer = await file.arrayBuffer();
     console.log('decrepting file')
-    const fileUint8Array = new Uint8Array(fileBuffer);
-    console.log('fileUint8Array', fileUint8Array)
+
     const decryptedFile = await crypto.subtle.decrypt(
         {
             name: 'AES-GCM',
             iv: savedIV
         },
         key,
-        fileUint8Array
+        fileBuffer
     );
     console.log('Decrypted file:', decryptedFile);
     return decryptedFile;
@@ -115,6 +184,7 @@ async function decryptFile(file, key) {
 
 
 async function deriveKey() {
+    console.log('running deriveKey')
     // const salt = crypto.getRandomValues(new Uint8Array(16));
     // console.log('salt', salt);
     const enc = new TextEncoder()
@@ -171,3 +241,6 @@ fileInput.addEventListener('change', async (event) => {
 
 // });
 
+
+
+export {deriveKey, encryptFile, decryptFile, generateIV}
