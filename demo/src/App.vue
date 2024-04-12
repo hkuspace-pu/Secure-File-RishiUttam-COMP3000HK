@@ -10,12 +10,12 @@
 
       <button @click="encrypt" id="encryptButton">Encrypt</button>
     </div>
-    | <a ref="downloadLink" id="downloadLink" style="display: none;">Download file</a>
+     <a ref="downloadLink" id="downloadLink" style="display: none;">Download file</a>
 
     <div class="box">
       <h2>Decrypt</h2>
-      <input id="fileInputDecrypt" type="file" />
-      <button id="decryptButton">Decrypt</button>
+      <input ref="fileInputDec" id="fileInputDecrypt" type="file" />
+      <button @click="decrypt" id="decryptButton">Decrypt</button>
       <!-- <a id="downloadLink" style="display: none;">Download file</a> -->
     </div>
   </div>
@@ -25,6 +25,7 @@
 import { ref } from "vue";
 import * as secure from 'crypto-middleware'
 let fileInput = ref(null);
+let fileInputDec = ref(null);
 let passPhrase = ref('');
 let downloadLink = ref(null);
 // let downloadLink
@@ -40,6 +41,18 @@ const encrypt = async () => {
     downloadLink.value.download = file.name + '.enc';
     downloadLink.value.style.display = 'block';
 };
+
+const decrypt = async () => {
+    downloadLink.value.style.display = 'none';
+    const file = fileInputDec.value.files[0];
+    const decryptedFile = await secure.decryptFile(file, passphrase.value);
+    const decryptedBlob = new Blob([decryptedFile], { type: 'application/octet-stream' });
+    const decryptedBlobUrl = URL.createObjectURL(decryptedBlob);
+    downloadLink.value.href = decryptedBlobUrl;
+    downloadLink.value.download = file.name + '.dec';
+    downloadLink.value.style.display = 'block';
+};
+
 
 </script>
 

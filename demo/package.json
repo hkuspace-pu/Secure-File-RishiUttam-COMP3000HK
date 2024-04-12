@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "crypto-middleware": "^1.0.0",
+    "crypto-middleware": "^1.0.1",
     "vue": "^3.4.21"
   },
   "devDependencies": {
