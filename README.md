@@ -3,12 +3,14 @@
   <h1>COMP3000HK 2023/24 FINAL YEAR CYBER SECRUITY PROJECT</h1>
  <h2>Project Title</h2> 
   <p>
- Application of Client-side Cryptography for Secure File Transfers
+Methods In Client-Side Encryption: The Key To Confidentiality For Cloud Storage  
+
   </p>
   
 
    
 <h4>
+  <a href="https://github.com/orgs/hkuspace-pu/projects/16/views/1">Backlog, Gnatt Chart & Roadmap</a>
     <a href="https://hktreewatch.org">View Demo</a>
   <span> · </span>
     <a href="#">Documentation</a>
