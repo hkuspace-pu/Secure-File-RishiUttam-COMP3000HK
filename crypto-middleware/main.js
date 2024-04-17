@@ -8,7 +8,7 @@ let progress
 const chunkSize  = 1024 // Size of each chunk in bytes
 
 
-console.log('running main.js')n     
+console.log('running main.js')   
 
 
 
@@ -22,11 +22,13 @@ return iv;
 
 
 async function encryptFile(file, passphrase, iv) {
-    console.log('running encryptfile')
+  
 const key = await deriveKey(passphrase)
 console.log('key', key);
+console.time('Reading')
+console.time('running encryptfile')
     const fileBuffer = await file.arrayBuffer();
-
+    console.timeEnd('running encryptfile')
     const encryptedFile = await crypto.subtle.encrypt(
         {
             name: 'AES-GCM',
