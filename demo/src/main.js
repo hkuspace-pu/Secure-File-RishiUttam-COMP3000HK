@@ -1,5 +1,14 @@
 import { createApp } from 'vue'
-// import './style.css'
+import './assets/styles.css'
+import PrimeVue from 'primevue/config';
 import App from './App.vue'
 
-createApp(App).mount('#app')
+import 'primevue/resources/themes/lara-light-blue/theme.css'       // theme
+const app = createApp(App);
+app.use(PrimeVue);
+app.mount('#app');
+// const app = createApp(App);
+// app.use(PrimeVue, {
+//     unstyled: true
+// });
+// app.mount('#app');
