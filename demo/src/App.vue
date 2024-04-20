@@ -7,7 +7,7 @@
       <input ref="fileInput" id="fileInput" type="file" />
 
       <input ref="passphrase" type="text" id="passphrase" placeholder="Enter passphrase" />
-
+      
       <button @click="encrypt" id="encryptButton">Encrypt Stream</button>
       <button @click="encryptBuffer" id="encryptButton">Encrypt Buffer</button>
     </div>
@@ -22,7 +22,8 @@
       <!-- <a id="downloadLink" style="display: none;">Download file</a> -->
     </div>
 
-
+<p><i @click="listFiles" class="pi pi-cloud-download"></i>
+</p>
     <div v-if="data" class="showList">
       <DataTable resizableColumns lazy stripedRows :value="data.Contents" tableStyle="min-width:60rem">
       <!-- <Column v-for="col of columns" :key="col.field" :field="col.field" :header="col.header"></Column> -->
@@ -167,6 +168,13 @@ console.log('ERROR', error)
 };
 
 
+
+  // // await writable.close();
+  // console.timeEnd('startStreaming')
+  // progressEmitter.removeEventListener('progress', onProgress);
+
+
+
 const encryptBuffer = async () => {
    console.time('BUFFER')
   const file = fileInput.value.files[0];
@@ -212,14 +220,16 @@ const listFiles = async () => {
 listFiles()
 
 const callPrettyBytes = (value) => {
-  console.log('pp',value.Size)
+  // console.log('pp',value.Size)
   return prettyBytes(value.Size)
 }
 
 const downloadFile = async (rowData) => {
+  // try {
   console.log('Downloading')
 //get the object from s3 streaming
 const { Key } = rowData;
+console.log('KEY', Key)
 const params = {
     Bucket: "securesend2",
     Key: Key
@@ -227,19 +237,34 @@ const params = {
 
 const dl = new GetObjectCommand(params);
 const {Body} = await client.send(dl);
-const decrypt = await secure.decryptStream(passPhrase.value)
-return Body
 
-// const response = new Response(Body);
-//     const encryptedBlob = await response.blob();
-//     const encryptedBlobUrl = URL.createObjectURL(encryptedBlob);
-//     downloadLink.value.href = encryptedBlobUrl;
+const decryptStream = secure.decryptStream(passPhrase.value);
+
+console.log('DECRYPT STREAM', decryptStream)
+const decryptedStream =  Body.pipeThrough(decryptStream);
+console.log('DECRYPTED STREAM', decryptedStream)
+
+
+const fileHandle = await window.showSaveFilePicker();
+  const writable = await fileHandle.createWritable();
+  await decryptedStream.pipeTo(writable);
+
+
+// const response = new Response(decryptedStream);
+//     const decryptedBlob = await response.blob();
+//     const decryptedBlobUrl = URL.createObjectURL(decryptedBlob);
+//     downloadLink.value.href = decryptedBlobUrl;
 //     downloadLink.value.download = Key;
-//     //click the download link programatticly
+// // //     //click the download link programatticly
 //     downloadLink.value.click();
+//     console.log('DOWNLAODED');
 
 //     // downloadLink.value.download = file.name + '.enc';
 //     // downloadLink.value.style.display = 'block';
+
+  // } catch (error) {
+  //   console.log('ERROR', error)
+  // }
 }
 
 
