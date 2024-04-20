@@ -19,7 +19,7 @@
       <button @click="decrypt" id="decryptButton">Decrypt</button>
 
 
-      <!-- <a id="downloadLink" style="display: none;">Download file</a> -->
+      <a id="downloadLink" style="display: none;">Download file</a>
     </div>
 
 <p><i @click="listFiles" class="pi pi-cloud-download"></i>
@@ -30,6 +30,8 @@
       <Column>
         <template #body="slotProps">
     <i @click="downloadFile(slotProps.data)" class="pi pi-cloud-download"></i>
+    <i @click="decrypt(slotProps.data)" class="pi pi-cloud-download"></i>
+
   </template>
 
           </Column>
@@ -179,6 +181,7 @@ const encryptBuffer = async () => {
    console.time('BUFFER')
   const file = fileInput.value.files[0];
     const encryptedFile = await secure.encryptFile(file, passphrase.value);
+    console.log(encryptedFile)
   //upload to s3
   const params = {
     Bucket: "securesend2", // YOUR_BUCKET_NAME
@@ -189,6 +192,7 @@ const encryptBuffer = async () => {
     const uploader = new Upload({client,params});
     const result = await uploader.done();
   console.timeEnd('BUFFER' )
+  console.log(result)
     // const encryptedBlob = new Blob([encryptedFile], { type: 'application/octet-stream' });
     // const encryptedBlobUrl = URL.createObjectURL(encryptedBlob);
     // downloadLink.value.href = encryptedBlobUrl;
@@ -198,14 +202,22 @@ const encryptBuffer = async () => {
 }
 
 const decrypt = async () => {
+  try {
     downloadLink.value.style.display = 'none';
     const file = fileInputDec.value.files[0];
+    console.log(file)
     const decryptedFile = await secure.decryptFile(file, passphrase.value);
     const decryptedBlob = new Blob([decryptedFile], { type: 'application/octet-stream' });
     const decryptedBlobUrl = URL.createObjectURL(decryptedBlob);
     downloadLink.value.href = decryptedBlobUrl;
-    downloadLink.value.download = file.name + '.dec';
-    downloadLink.value.style.display = 'block';
+    downloadLink.value.download = file.name
+// // //     //click the download link programatticly
+    downloadLink.value.click();
+
+  } catch(error) {
+    console.log(error)
+  }
+
 };
 
 
@@ -238,25 +250,35 @@ const params = {
 const dl = new GetObjectCommand(params);
 const {Body} = await client.send(dl);
 
-const decryptStream = secure.decryptStream(passPhrase.value);
+// temp use to create an array buffer then send to decrypt the whole file
 
-console.log('DECRYPT STREAM', decryptStream)
-const decryptedStream =  Body.pipeThrough(decryptStream);
-console.log('DECRYPTED STREAM', decryptedStream)
-
-
-const fileHandle = await window.showSaveFilePicker();
-  const writable = await fileHandle.createWritable();
-  await decryptedStream.pipeTo(writable);
+// const arrayBuffer = await response.arrayBuffer();
+// console.log(arrayBuffer)
+//
 
 
-// const response = new Response(decryptedStream);
-//     const decryptedBlob = await response.blob();
-//     const decryptedBlobUrl = URL.createObjectURL(decryptedBlob);
-//     downloadLink.value.href = decryptedBlobUrl;
-//     downloadLink.value.download = Key;
+// console.log('DECRYPT STREAM', decryptStream)
+// const decryptedStream =  Body.pipeThrough(decryptStream);
+// console.log('DECRYPTED STREAM', decryptedStream)
+
+
+// const fileHandle = await window.showSaveFilePicker();
+  // const writable = await fileHandle.createWritable();
+  // try {
+  // await decryptedStream.pipeTo(writable);
+
+  // }catch (e){
+    // console.log('ERROR', e.message)  }
+const response = new Response(Body);
+    const decryptedBlob = await response.blob();
+    const arrayBuffer = await response.arrayBuffer();
+    const file = new File([arrayBuffer], key);
+   const blob =  await secure.decryptFile(file, passPhrase.value);
+    // const decryptedBlobUrl = URL.createObjectURL(decryptedBlob);
+    // downloadLink.value.href = decryptedBlobUrl;
+    // downloadLink.value.download = Key;
 // // //     //click the download link programatticly
-//     downloadLink.value.click();
+    // downloadLink.value.click();
 //     console.log('DOWNLAODED');
 
 //     // downloadLink.value.download = file.name + '.enc';
