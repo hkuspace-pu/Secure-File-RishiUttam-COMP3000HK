@@ -67,7 +67,7 @@
 import { ref,reactive } from "vue";
 import * as secure from 'crypto-middleware'
 import * as openpgp from 'openpgp';
-import { S3Client, ListObjectsV2Command,GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, ListObjectsV2Command,GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import prettyBytes from 'pretty-bytes'
 const client = new S3Client({ region: "ap-east-1",  credentials: {
@@ -111,25 +111,35 @@ const upload = async (file,stream) => {
 
 const encrypt = async () => {
 try {
-  console.time('READ>ENCRYPT')
+
     const file = fileInput.value.files[0];
     const totalBytes = file.size
 console.log('ENCRYPT PASS PRHASE', passphrase.value)
     // const encryptedFile = await secure.encryptFile(file, passphrase.value);
-        const {stream} = await secure.startStreaming(file, passphrase.value);
+        const stream = await secure.startStreaming(file, passphrase.value);
 
 
-console.timeEnd('READ>ENCRYPT')
-// progressEmitter.addEventListener('progress', onProgress);
+
 const params = {
     Bucket: "securesend2", // YOUR_BUCKET_NAME
     Key: file.name, // Use the file name as the key
-    Body: stream, // Upload the encrypted file stream
+    Body: stream
   };
-  console.log("STARING UPLOAD S3")
-  console.time('READ>ENCRYPT>UPLOAD')
+
+
+
+
+
+  // const awsUpload = stream.pipeTo(aws)
+
+  // function aws() {
+  //   console.log('AWS UPLOAD')
+
+  // }
+
   const uploader = new Upload({client,params});
   //track prorgress
+
 
 
 uploader.on('httpUploadProgress', (progress) => {
@@ -138,12 +148,13 @@ uploader.on('httpUploadProgress', (progress) => {
   
 });
 
-console.log("starting upload...")
+// console.log("starting upload...")
   const result = await uploader.done();
     console.log("Upload completed:", result);
-    console.timeEnd('READ>ENCRYPT>UPLOAD')
+//     console.timeEnd('READ>ENCRYPT>UPLOAD')
 
-// const data = await client.send(new PutObjectCommand(uploadParams) )
+// const data = await client.send(new PutObjectCommand(command) )
+// console.log(data)
 
 //FOR SAVING TO FILE USING WRITABLE
   //       if ('showSaveFilePicker' in window) {
@@ -158,6 +169,8 @@ console.log("starting upload...")
   // console.timeEnd('startStreaming')
   // progressEmitter.removeEventListener('progress', onProgress);
 // 
+
+
 } catch (error) {
 console.log('ERROR', error)
 }
@@ -234,6 +247,9 @@ const downloadFile = async (rowData) => {
   console.log('PASSPHRASE APP.VUE 229', passphrase.value)
   // try {
   console.log('Downloading')
+  const fileHandle = await window.showSaveFilePicker();
+  const writable = await fileHandle.createWritable();
+  
 //get the object from s3 streaming
 const { Key } = rowData;
 console.log('KEY', Key)
@@ -243,6 +259,8 @@ const params = {
   }
 
 const dl = new GetObjectCommand(params);
+
+
 const {Body} = await client.send(dl);
 
 // temp use to create an array buffer then send to decrypt the whole file
@@ -257,8 +275,7 @@ const decryptedStream =  Body.pipeThrough(decryptStream);
 console.log('DECRYPTED STREAM', decryptedStream)
 
 
-const fileHandle = await window.showSaveFilePicker();
-  const writable = await fileHandle.createWritable();
+
   // try {
   await decryptedStream.pipeTo(writable);
 

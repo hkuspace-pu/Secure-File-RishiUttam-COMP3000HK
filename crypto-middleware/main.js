@@ -2,11 +2,11 @@
 
 //click handler for the encrypt button
 
-let savedIV
-let encryptedBlob
-let progress
-const chunkSize = 1024 // Size of each chunk in bytes
 
+
+let savedIV
+// const chunkSize = 1024 // Size of each chunk in bytes
+let bufferSize = 1 * 1024 * 1024 // 1MB buffer size
 
 console.log('A')
 const cryptoMiddleware = require('crypto-middleware/package.json');
@@ -17,6 +17,7 @@ function generateIV() {
     const iv = crypto.getRandomValues(new Uint8Array(16));
    
     savedIV = iv
+    console.log('SAVING IV', savedIV)
     return iv;
 }
 
@@ -24,105 +25,91 @@ async function readFileChunk(file) {
     return file.stream()
 }
 
-async function startStreaming(file,passPhrase) {
-    const progressEmitter = new EventTarget();
-    const progressStream = createProgressStream(progressEmitter);
 
+async function encryptStream(passphrase) {
+   console.log('Staring encryption stream')
+   const key = await deriveKey(passphrase);
+    const iv = generateIV();
+
+    return new TransformStream({
+        start() {
+            this.buffer = new Uint8Array(bufferSize); // 
+            this.bufferLength = 0;
+            this.chunkCount = 0; // Add a counter for the chunks
+        },
+
+        async transform(chunk, controller) {
+            console.log('Received Chunk', chunk.byteLength);
+            let chunkOffset = 0;
+
+            while (chunkOffset < chunk.byteLength) {
+                const spaceLeftInBuffer = this.buffer.byteLength - this.bufferLength;
+                const chunkSize = Math.min(spaceLeftInBuffer, chunk.byteLength - chunkOffset);
+
+                const piece = chunk.subarray(chunkOffset, chunkOffset + chunkSize);
+                this.buffer.set(piece, this.bufferLength);
+                this.bufferLength += chunkSize;
+
+                if (this.bufferLength === this.buffer.byteLength) {
+                    const dataToEncrypt = this.buffer.subarray(0, this.bufferLength);
+                   
+                    const encryptedFile = await crypto.subtle.encrypt(
+                        {
+                            name: 'AES-GCM',
+                            iv: savedIV
+                        },
+                        key,
+                        dataToEncrypt
+                
+                    );
+                    console.log('Encypted Chunk Size:', encryptedFile.byteLength)
+                   console.log('Enquieing chunk No:', this.chunkCount)
+                    controller.enqueue(encryptedFile);
+                    this.buffer = new Uint8Array(bufferSize); // Create a new buffer
+                    this.bufferLength = 0;
+                    this.chunkCount++;
+                }
+
+                chunkOffset += chunkSize;
+            }
+        },
+
+        async flush(controller) {
+            if (this.bufferLength > 0) {
+                const dataToEncrypt = this.buffer.subarray(0, this.bufferLength);
+                const encryptedFile = await crypto.subtle.encrypt(
+                    {
+                        name: 'AES-GCM',
+                        iv: savedIV
+                    },
+                    key,
+                    dataToEncrypt
+            
+                );
+               
+                console.log('Last Chunk No.:', this.chunkCount)
+                controller.enqueue(encryptedFile);
+                this.buffer = new Uint8Array(bufferSize); // Create a new buffer
+                this.bufferLength = 0;
+                this.chunkCount++;
+            }
+            console.log('Total chunks processed:', this.chunkCount); // Log the total number of chunks
+        }
+    });
+}
+
+
+async function startStreaming(file,passPhrase) {
   
     const fileStream = await readFileChunk(file);
     const encryptionStream = await encryptStream(passPhrase);
-    const encryptedStream = await fileStream.pipeThrough(encryptionStream).pipeThrough(progressStream);
+    const encryptedStream = await fileStream.pipeThrough(encryptionStream)
 
-    return { stream: encryptedStream, progressEmitter };
-
-
-}
-
-async function startDownloading(file,passPhrase) {
-
+    return encryptedStream
 }
 
 
 
-
-
-function createProgressStream(progressEmitter) {
-    let totalBytes = 0;
-    return new TransformStream({
-        transform(chunk, controller) {
-            totalBytes += chunk.byteLength;
-            progressEmitter.dispatchEvent(new CustomEvent('progress', { detail: totalBytes }));
-            controller.enqueue(chunk);
-          }
-  
-    })
-
-
-}
-
-
-
-
-async function encryptStream(passphrase) {
-    const key = await deriveKey(passphrase)
-    console.log("Key to use: ", key)
-return new TransformStream({
-    async transform(chunk, controller) {
-        // console.log('CHUNK', chunk.byteLength)
-  
-        const iv = generateIV();
-        const encryptedChunk = await crypto.subtle.encrypt(
-            {
-                name: 'AES-GCM',
-                iv: iv
-            },
-            key,
-            chunk
-        );
-
-        // Create a metadata object
-        const metadata = {
-            iv: Array.from(iv),
-            algorithm: 'AES-GCM',
-            // Add other metadata fields as needed
-        };
-        // create a new empty array of the same byte length as the iv and encrypted file
-        const IVAndEncryptedFile = new Uint8Array(iv.byteLength + encryptedChunk.byteLength);
-        // set the iv at the start of the array
-        IVAndEncryptedFile.set(new Uint8Array(iv), 0);
-
-        // set the encrypted file after the iv
-        IVAndEncryptedFile.set(new Uint8Array(encryptedChunk), iv.byteLength);
-
-        controller.enqueue(IVAndEncryptedFile)
-    }
-})
-
-}
-
-
-// async function readFileChunkReader(file, passphrase) {
-//     const reader = file.stream().getReader();
-//     let encryptedChunks = [];
-//     console.time('readFileChunk')
-//     while (true) {
-//         const { done, value } = await reader.read();
-
-//         if (done) {
-//             console.log("All Done")
-//             break;
-//         }
-
-
-//         console.log('CHUNK', value.byteLength)
-//         encryptedChunks.push(value);
-
-//         console.log('totalChunks= ', encryptedChunks.length)
-//     }
-//     console.timeEnd('chunk time')
-
-
-// }
 
 async function encryptFile(file, passphrase) {
     console.log('running encryptfile')
@@ -136,7 +123,7 @@ async function encryptFile(file, passphrase) {
     const encryptedFile = await crypto.subtle.encrypt(
         {
             name: 'AES-GCM',
-            iv: iv
+            iv: savedIV
         },
         key,
         fileBuffer
@@ -144,22 +131,23 @@ async function encryptFile(file, passphrase) {
     );
     
     // Create a metadata object
-    const metadata = {
-        iv: Array.from(iv),
-        algorithm: 'AES-GCM',
-        // Add other metadata fields as needed
-    };
-    // create a new empty array of the same byte length as the iv and encrypted file
-    const IVAndEncryptedFile = new Uint8Array(iv.byteLength + encryptedFile.byteLength);
-    // set the iv at the start of the array
-    IVAndEncryptedFile.set(new Uint8Array(iv), 0);
+    // const metadata = {
+    //     iv: Array.from(iv),
+    //     algorithm: 'AES-GCM',
+    //     // Add other metadata fields as needed
+    // };
+    // // create a new empty array of the same byte length as the iv and encrypted file
+    // const IVAndEncryptedFile = new Uint8Array(iv.byteLength + encryptedFile.byteLength);
+    // // set the iv at the start of the array
+    // IVAndEncryptedFile.set(new Uint8Array(iv), 0);
 
-    // set the encrypted file after the iv
-    IVAndEncryptedFile.set(new Uint8Array(encryptedFile), iv.byteLength);
+    // // set the encrypted file after the iv
+    // IVAndEncryptedFile.set(new Uint8Array(encryptedFile), iv.byteLength);
 
 
-    console.timeEnd('EncryptFileWholeBuffer')
-    return IVAndEncryptedFile;
+    // console.timeEnd('EncryptFileWholeBuffer')
+    // return IVAndEncryptedFile;
+    return new Uint8Array(encryptedFile);
 
 }
 
@@ -168,7 +156,7 @@ async function encryptFile(file, passphrase) {
 
 //function to decrypt a file using the key using aes-gcm mode
 async function decryptFile(file, passphrase) {
-    try {
+try {
         const fileBuffer = await file.arrayBuffer();
         console.log('decrepting file')
         console.log(passphrase)
@@ -187,34 +175,114 @@ async function decryptFile(file, passphrase) {
 
 
         return decryptedFile;
-    } catch (error) {
-        throw new Error('Decryption failed:', error)
+    }catch (error) {
+        throw error
     }
 }
 
 
-async function decryptStream(passphrase) {
-    const key = await deriveKey(passphrase)
 
+
+  
+
+
+
+  function decryptStream(passphrase) {
+    try {
+        console.log('decrypt pass' ,passphrase)
+    let key
+    // const key = await deriveKey(passphrase)
+//     console.log('in decreypt stream key',key   );
+// console.log('in decrypt stream', passphrase)
     return new TransformStream({
-        async transform(chunk, controller) {
-            // Extract the IV from the start of the chunk
-            const iv = chunk.slice(0, 12); // Replace 12 with the actual length of your IV
-            const data = chunk.slice(12); // Replace 12 with the actual length of your IV
-            console.log(iv)
-            // Decrypt the chunk
-            const decryptedChunk = await crypto.subtle.decrypt(
-                {
-                    name: 'AES-GCM',
-                    iv: new Uint8Array(iv)
-                },
-                key,
-                data
-            );
+        async start() {
+            console.log('in start')
+            key = await deriveKey(passphrase);
 
-            controller.enqueue(new Uint8Array(decryptedChunk));
+            this.buffer = new Uint8Array(bufferSize + 16); // 64KB buffer
+            this.bufferLength = 0;
+            this.chunkCount = 0; // Add a counter for the chunks
+
+        },
+
+    //    async transform(chunk, controller) {
+    //         console.log('Chunk:', chunk.byteLength);
+    //         controller.enqueue(chunk);
+    //     }
+
+    async transform(chunk, controller) {
+        let chunkOffset = 0;
+
+        while (chunkOffset < chunk.byteLength) {
+            const spaceLeftInBuffer = this.buffer.byteLength - this.bufferLength;
+            const chunkSize = Math.min(spaceLeftInBuffer, chunk.byteLength - chunkOffset);
+
+            const piece = chunk.subarray(chunkOffset, chunkOffset + chunkSize);
+            this.buffer.set(piece, this.bufferLength);
+            this.bufferLength += chunkSize;
+
+            if (this.bufferLength === this.buffer.byteLength) {
+                const dataToDecrypt = this.buffer.subarray(0, this.bufferLength);
+            //  console.log('key to use', key)
+                try {
+                    const decryptedChunk = await crypto.subtle.decrypt(
+                        {
+                            name: 'AES-GCM',
+                            iv: savedIV,
+                        },
+                        key,
+                        dataToDecrypt
+                    );
+
+                    controller.enqueue(decryptedChunk);
+                } catch (e) {
+                    console.log('Error decrypting chunk:', e);
+                    throw e;
+                }
+
+                this.buffer = new Uint8Array(bufferSize + 16); // Create a new buffer
+                this.bufferLength = 0;
+                this.chunkCount++;
+            }
+
+            chunkOffset += chunkSize;
         }
+    },
+    async flush(controller) {
+        if (this.bufferLength > 0) {
+            const dataToDecrypt = this.buffer.subarray(0, this.bufferLength);
+
+            try {
+                const decryptedChunk = await crypto.subtle.decrypt(
+                    {
+                        name: 'AES-GCM',
+                        iv: savedIV
+                    },
+                    key,
+                    dataToDecrypt
+                );
+
+                controller.enqueue(decryptedChunk);
+            } catch (e) {
+                console.log('Error decrypting chunk:', e);
+                throw e;
+            }
+
+            this.buffer = new Uint8Array(bufferSize + 16); // Create a new buffer
+            this.bufferLength = 0;
+            this.chunkCount++;
+        }
+
+        console.log('Total chunks processed:', this.chunkCount);
+    }
+
+
     });
+
+} catch (error) {
+console.log('main.js ', error)
+throw error
+}
 }
 
 
