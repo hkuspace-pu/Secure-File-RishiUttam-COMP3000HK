@@ -10,6 +10,14 @@
       
       <button @click="encrypt" id="encryptButton">Encrypt Stream</button>
       <button @click="encryptBuffer" id="encryptButton">Encrypt Buffer</button>
+   
+      <div class="box">
+      <p>AWS Progress</p>
+      <ProgressBar :value="awsProgress"></ProgressBar>
+      <!-- <progress ref="awsProgress" id="awsProgress" max="100" value="0"></progress> -->
+     
+    </div>
+   
     </div>
      <a ref="downloadLink" id="downloadLink" style="display: none;">Download file</a>
 
@@ -24,13 +32,7 @@
     </div> -->
 
 
-    <div class="box">
-      <p>AWS Progress</p>
-      <ProgressBar :value="awsProgress"></ProgressBar>
-      <progress ref="awsProgress" id="awsProgress" max="100" value="0"></progress>
-      <p>Encrypt Progress</p>
-      <progress ref="encryptProgress" id="encryptProgress" max="100" value="0"></progress>
-    </div>
+   
 
     </div>
 
@@ -85,7 +87,6 @@ let fileInputDec = ref(null);
 let passphrase = ref('');
 let downloadLink = ref(null);
 let awsProgress = ref(0);
-let encryptProgress = ref(0);
 let value = ref('');
 const data = ref(null);
 // let downloadLink
@@ -117,10 +118,7 @@ console.log('ENCRYPT PASS PRHASE', passphrase.value)
     // const encryptedFile = await secure.encryptFile(file, passphrase.value);
         const {stream} = await secure.startStreaming(file, passphrase.value);
 
-        const onProgress = (event) => {
-          encryptProgress.value.value = event.detail / totalBytes * 100;
 
-};
 console.timeEnd('READ>ENCRYPT')
 // progressEmitter.addEventListener('progress', onProgress);
 const params = {
@@ -133,9 +131,10 @@ const params = {
   const uploader = new Upload({client,params});
   //track prorgress
 
+
 uploader.on('httpUploadProgress', (progress) => {
-  awsProgress.value.value = progress.loaded / totalBytes * 100;
-     console.log('PROGRESSaws ' ,  awsProgress.value.value)
+  awsProgress.value = Math.round((progress.loaded / totalBytes) * 100);
+     console.log('Upload Progress ' ,  awsProgress.value)
   
 });
 
@@ -304,12 +303,14 @@ const fileHandle = await window.showSaveFilePicker();
 .boxContainer {
   display: flex;
   gap: 1rem;
+width: 100%;
+justify-content: space-evenly;
 }
 
 .box {
-  border: 1px solid red;
+  /* border: 1px solid red; */
   padding: 20px;
-  height: 400px;
+  /* height: 400px; */
   /* width: 400px; */
 }
 </style>
