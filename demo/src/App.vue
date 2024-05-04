@@ -1,6 +1,11 @@
 <template>
   <div class="container">
     <h1 class="text-3xl font-bold underline">Web crypto demo</h1>
+    <div>
+    <p>Used JS heap size: {{ prettyBytes(memInfo.usedJSHeapSize) }}</p>
+  </div>
+  <Chart type="bar" :data="chartData" :options="chartOptions" class="h-30rem" />
+
 <div class="boxContainer">
     <div class="box">
       <h2>Encrypt</h2>
@@ -49,6 +54,8 @@
 
   </template>
 
+
+
           </Column>
     <Column field="Key" header="Filename"></Column>
     <Column :field="callPrettyBytes" header="Size"></Column>
@@ -58,18 +65,21 @@
 
     </div>
 
+    
+    
     <!-- <Button label="Submit" /> -->
  
   </div>
 </template>
 
 <script setup>
-import { ref,reactive } from "vue";
+import { ref,onMounted } from "vue";
 import * as secure from 'crypto-middleware'
 import * as openpgp from 'openpgp';
 import { S3Client, ListObjectsV2Command,GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import prettyBytes from 'pretty-bytes'
+import Chart from 'primevue/chart';
 const client = new S3Client({ region: "ap-east-1",  credentials: {
     accessKeyId: 'AKIAR3HSJBS3T6F7OSEL', 
     secretAccessKey: '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'
@@ -89,6 +99,15 @@ let downloadLink = ref(null);
 let awsProgress = ref(0);
 let value = ref('');
 const data = ref(null);
+const memInfo = ref({
+      jsHeapSizeLimit: 0,
+      usedJSHeapSize: 0,
+      totalJSHeapSize: 0,
+    });
+  const chartData = ref({labels: ['Q1', 'Q2', 'Q3', 'Q4']});
+const chartOptions = ref();
+
+
 // let downloadLink
 
 const openEncrypt = async () => {
@@ -101,13 +120,16 @@ console.log(open)
 
 //create a method called encrypt
 
-const upload = async (file,stream) => {
+const updateMemoryInfo = () => {
+      if (window.performance && window.performance.memory) {
+        memInfo.value = window.performance.memory;
+      }
+    }
 
-
-
-
-}
-
+    onMounted(() => {
+      // updateMemoryInfo();
+      setInterval(updateMemoryInfo, 1000); // Update every second
+    });
 
 const encrypt = async () => {
 try {
@@ -187,19 +209,41 @@ console.log('ERROR', error)
 const encryptBuffer = async () => {
    console.time('BUFFER')
   const file = fileInput.value.files[0];
-    const encryptedFile = await secure.encryptFile(file, passphrase.value.value);
-    console.log(encryptedFile)
+  const totalBytes = file.size
+
+    let encryptedFile = await secure.encryptFile(file, passphrase.value.value);
+    console.log('back in app.vue')
   //upload to s3
+
+  //type of encryptedFile
+  // console.log('TYPE', encryptedFile instanceof ArrayBuffer)
+
   const params = {
     Bucket: "securesend2", // YOUR_BUCKET_NAME
     Key: file.name, // Use the file name as the key
     Body: encryptedFile, // Upload the encrypted file stream
   };
+
+
+  const uploader =  new Upload({client,params});
+  //track prorgress
+
+
+  
+uploader.on('httpUploadProgress', (progress) => {z
+  awsProgress.value = Math.round((progress.loaded / totalBytes) * 100);
+     console.log('Upload Progress ' ,  awsProgress.value)
+})
+
+const result = await uploader.done();
+console.log(result)
+encryptedFile = null;
   // const data = await client.send(new PutObjectCommand(params) )
-    const uploader = new Upload({client,params});
-    const result = await uploader.done();
-  console.timeEnd('BUFFER' )
-  console.log(result)
+    // const uploader = new Upload({client,params});
+
+  // console.timeEnd('BUFFER' )
+  // console.log(result)
+  // console.log(data)
     // const encryptedBlob = new Blob([encryptedFile], { type: 'application/octet-stream' });
     // const encryptedBlobUrl = URL.createObjectURL(encryptedBlob);
     // downloadLink.value.href = encryptedBlobUrl;
@@ -249,7 +293,7 @@ const downloadFile = async (rowData) => {
   console.log('Downloading')
   const fileHandle = await window.showSaveFilePicker();
   const writable = await fileHandle.createWritable();
-  
+
 //get the object from s3 streaming
 const { Key } = rowData;
 console.log('KEY', Key)
