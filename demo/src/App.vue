@@ -3,8 +3,11 @@
     <h1 class="text-3xl font-bold underline">Web crypto demo</h1>
     <div>
     <p>Used JS heap size: {{ prettyBytes(memInfo.usedJSHeapSize) }}</p>
+     <p v-show="highestMem">Max memory: {{ prettyBytes(highestMem) }}</p>
   </div>
-  <Chart type="bar" :data="chartData" :options="chartOptions" class="h-30rem" />
+
+
+  <apexchart type="line" height="350"  ref="chart" :options="chartOptions" :series="series"></apexchart>
 
 <div class="boxContainer">
     <div class="box">
@@ -44,7 +47,9 @@
 
 <p><i @click="listFiles" class="pi pi-cloud-download"></i>
 </p>
+
     <div v-if="data" class="showList">
+
       <DataTable resizableColumns lazy stripedRows :value="data.Contents" tableStyle="min-width:60rem">
       <!-- <Column v-for="col of columns" :key="col.field" :field="col.field" :header="col.header"></Column> -->
       <Column>
@@ -73,13 +78,14 @@
 </template>
 
 <script setup>
-import { ref,onMounted } from "vue";
+import { ref,reactive,onMounted } from "vue";
 import * as secure from 'crypto-middleware'
 import * as openpgp from 'openpgp';
 import { S3Client, ListObjectsV2Command,GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import prettyBytes from 'pretty-bytes'
-import Chart from 'primevue/chart';
+
+
 const client = new S3Client({ region: "ap-east-1",  credentials: {
     accessKeyId: 'AKIAR3HSJBS3T6F7OSEL', 
     secretAccessKey: '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'
@@ -97,16 +103,87 @@ let fileInputDec = ref(null);
 let passphrase = ref('');
 let downloadLink = ref(null);
 let awsProgress = ref(0);
-let value = ref('');
+let highestMem = ref(0)
 const data = ref(null);
 const memInfo = ref({
       jsHeapSizeLimit: 0,
       usedJSHeapSize: 0,
       totalJSHeapSize: 0,
     });
-  const chartData = ref({labels: ['Q1', 'Q2', 'Q3', 'Q4']});
-const chartOptions = ref();
 
+    const chart = ref();
+    const chartOptions = ref({
+            chart: {
+              id: 'realtime',
+              height: 350,
+              type: 'line',
+              animations: {
+                enabled: false,
+                easing: 'linear',
+    
+                dynamicAnimation: {
+                  enabled:true,
+                  speed: 1000
+                },
+           
+              },
+              toolbar: {
+                show: true
+              },
+              legend : {
+                show:true
+              },
+              zoom: {
+                enabled: true
+              }
+            },
+            dataLabels: {
+              enabled: false
+            },
+            stroke: {
+              curve: 'smooth'
+            },
+              title: {
+              text: 'Memory Buffer',
+              align: 'left'
+            },
+                markers: {
+              size: 0
+            },
+               xaxis: {
+              type: 'datetime',
+              title  : {
+                text: 'Time'
+              }
+             
+              // range: 30
+
+            },
+               yaxis: {
+                min: 0,
+              max: 100000000, // 100MB,
+              labels :{
+                formatter: function(val) {
+                  return prettyBytes(val)
+                } 
+              },
+              title  : {
+                text: 'Memory Usage'
+              }
+            },
+            legend: {
+              show: false
+            },
+          });
+          
+    const series = ref([
+        {
+          name: 'Memory',
+          data: []
+          // data: traffic2.value.slice()
+       
+        }
+      ]);
 
 // let downloadLink
 
@@ -121,13 +198,41 @@ console.log(open)
 //create a method called encrypt
 
 const updateMemoryInfo = () => {
-      if (window.performance && window.performance.memory) {
+
+ 
         memInfo.value = window.performance.memory;
-      }
+        const offset = 8;  // Adjust by 8 hours
+        const millisecondsPerHour = 60 * 60 * 1000;
+const adjustedNow = Date.now() + offset * millisecondsPerHour;
+// const adjustedSixtySecondsAgo = adjustedNow - 60 * 1000;  // 60 seconds ago
+
+const max = Math.max(...series.value[0].data.map(dataPoint => dataPoint[1]));
+if (max > highestMem.value) {
+  highestMem.value = max;
+  }
+
+if (max > 100000000) {
+  chart.value.updateOptions({
+          yaxis: {
+            max: max,
+            labels :{
+                formatter: function(val) {
+                  return prettyBytes(val)
+                } 
+              },
+          },
+        });
+}
+series.value[0].data.push([adjustedNow,memInfo.value.usedJSHeapSize]);   
+    
+        // series.value[0].data.push(memInfo.value.usedJSHeapSize);   
+
+        if (series.value[0].data.length > 90) { // Keep only the last 120 data points
+          series.value[0].data.shift();
+        }
     }
 
     onMounted(() => {
-      // updateMemoryInfo();
       setInterval(updateMemoryInfo, 1000); // Update every second
     });
 
