@@ -1,35 +1,36 @@
 <template>
   <div class="container">
     <!-- <h2 class="text-2xl font-bold underline">Secure Send - Demonstration</h2> -->
- 
-
-
-  <apexchart type="line" height="350"  ref="chart" :options="chartOptions" :series="series"></apexchart>
-
-  
-
-<div class="boxContainer">
+ <div class="boxContainer">
     <div class="box">
       <h3>Secure Send - Encrypt</h3>
       <!-- <input ref="fileInput" id="fileInput" type="file" /> -->
 <FileUpload mode="basic" name="demo[]"  ref="fileInput" id="fileInput" />
 
+<apexchart type="radialBar" height="200" :options="radialOptions" :series="radialSeries"></apexchart>
 
       <input v-model="passphrase" type="text" id="passphrase" placeholder="Enter passphrase" />
       <button @click="uploadOnly" id="encryptButton">Upload Only</button>
-      <button @click="encrypt" id="encryptButton">Encrypt Stream</button>
+      <button @click="encrypt" id="encryptButton">Encrypt SecureSend</button>
       <button @click="encryptBuffer" id="encryptButton">Encrypt Buffer</button>
       <button @click="openPGP" id="encryptButton">OpenPGP</button>
-            <button @click="s3encrypt" id="encryptButton">AS33</button>
+            <!-- <button @click="s3encrypt" id="encryptButton">AS33</button> -->
    
       <!-- <div class="box"> -->
       <!-- <p>AWS Progress</p> -->
-      <ProgressBar :value="awsProgress"></ProgressBar>
+      <!-- <ProgressBar :value="awsProgress"></ProgressBar> -->
       <!-- <progress ref="awsProgress" id="awsProgress" max="100" value="0"></progress> -->
      
     <!-- </div> -->
    
     </div>
+<div class="box wide">
+  <apexchart type="line"  height="400" ref="chart" :options="chartOptions" :series="series"></apexchart>
+</div>
+  </div>
+
+<div class="boxContainer">
+
      <a ref="downloadLink" id="downloadLink" style="display: none;">Download file</a>
 
     <!-- <div class="box">
@@ -41,15 +42,18 @@
 
       <a id="downloadLink" style="display: none;">Download file</a>
     </div> -->
-    <div class="box">
-        <apexchart type="radialBar" height="350" :options="chartOptions" :series="radialSeries"></apexchart>
-      </div>
-    <div class="box">
-    <p>Used JS heap size: {{ prettyBytes(memInfo.usedJSHeapSize) }}</p>
-     <p v-show="highestMem">Max memory: {{ prettyBytes(highestMem) }}</p>
-     <p>{{timers.data}}</p>
+    <!-- <div class="box">
+        <apexchart type="radialBar" height="350" :options="radialOptions" :series="radialSeries"></apexchart>
+      </div> -->
+    <div class="box wide">
+    <div class="info">
+      <div>Used JS heap size: {{ prettyBytes(memInfo.usedJSHeapSize) }}</div>
+      <div v-show="highestMem">Max memory: {{ prettyBytes(highestMem) }}</div>
+    </div>
 
-     <apexchart type="bar" height="350" ref="timersBar" :options="barChartTimerOptions" :series="timers"></apexchart>
+     <!-- <p>{{timers.data}}</p> -->
+
+     <apexchart  height="250" ref="timersBar" :options="barChartTimerOptions" :series="timers"></apexchart>
 
   </div>
    
@@ -130,15 +134,46 @@ const memInfo = ref({
 
     const barChartTimerOptions = ref({
       chart: {
-        type: 'bar',
-        height: 340
+        height: 'auto'
+        // type: '',
+   
       }, xaxis: {
               categories: ['Baseline', 'OPENPGP', 'SecureSend'],
-    },yaxis : {
-     title : {
-      text: 'Duration (ms)'
-     }
-    },  title: {
+    },
+    yaxis: [
+    {
+      seriesName: 'Column A',
+      axisTicks: {
+        show: true
+      },
+      axisBorder: {
+        show: true,
+      },
+      title: {
+        text: "Duration (ms)"
+      }
+    },
+    {
+      seriesName: 'Column A',
+      show: false
+    }, {
+      opposite: true,
+      seriesName: 'Line C',
+      axisTicks: {
+        show: true
+      },
+      axisBorder: {
+        show: true,
+      },
+      title: {
+        text: "Memory (MB)"
+      }
+    }
+  ], 
+    
+  // colors: ['#99C2A2', '#C5EDAC', '#66C7F4'],
+    
+    title: {
               text: 'Time taken (ms)',
               align: 'left'
             },
@@ -150,6 +185,14 @@ const memInfo = ref({
     )
     
 
+      const radialOptions = ref({
+        chart: {
+          id: 'radial',
+          type: 'radialBar',
+          
+        },labels: ['Uploaded'],
+
+      })
 
     const chartOptions = ref({
             chart: {
@@ -226,10 +269,16 @@ const memInfo = ref({
 
       const timers = ref([
         {
-          name: 'Timers',
+          name: 'Duration',
+          type: 'column',
           data: []
           // data: traffic2.value.slice()
        
+        },
+        {
+        name: 'Memory',
+        type: 'line',
+        data: []
         }
       ]);
 
@@ -277,6 +326,7 @@ console.log('finished pgp encrypt')
 const endTime = performance.now(); // Capture end time
     console.log(`OPEN PGP Encryption took ${endTime - startTime} milliseconds.`);
     timers.value[0].data.push(parseFloat((endTime - startTime).toFixed(2)))
+    
 
 }
 
@@ -285,7 +335,7 @@ const endTime = performance.now(); // Capture end time
 const s3encrypt = async () => {
   const plainText = new Uint8Array([1, 2, 3, 4, 5])
   // const { result } = await awscrypto.encrypt('1234', plainText, { encryptionContext: context })
-console.log(result)
+console.log(result) 
 }
 
 
@@ -581,7 +631,8 @@ body {
   flex-direction: column;
   gap: 1rem;
   /* height: 400px; */
-  max-width: 1200px;
+  width: 1600px;
+  max-width: 98vw;
   margin: auto;
   padding: 1rem;
   padding-top:0;
@@ -595,9 +646,11 @@ body {
   gap: 1rem;
 flex-direction:Row;
 /* align-items:center; */
-justify-content: space-evenly;
+/* width: 100%; */
+/* width: auto; */
+/* justify-content: space-evenly; */
 /* border-radius:6px; */
-/* border:1px solid red; */
+
 
 }
 
@@ -609,14 +662,27 @@ justify-content: space-evenly;
 display:flex;
 gap:5px;
 width: 420px;
+height: fit-content;
 flex-direction:column;
-align-items:center;
+/* align-items:center; */
 border:1px solid rgb(230, 230, 230);
 box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.1);
   /* height: 400px; */
   /* width: 400px; */
+
 }
 
+.wide {
+/* margin:auto; */
+  /* flex:2; */
+  width: 100%;
+  /* width: 600px; */
+}
+.info {
+  display:flex;
+  flex-direction:row;
+  gap:2rem;
+}
 .box input {
   padding:7px;
   border-radius:2px;
