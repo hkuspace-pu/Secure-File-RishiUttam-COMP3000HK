@@ -10,6 +10,8 @@ import 'primevue/resources/themes/lara-light-blue/theme.css'
 import Toast from 'primevue/toast';
 import ToastService from 'primevue/toastservice';
    // theme
+import './workers/sjcl.js'
+  
 const app = createApp(App);
 const pinia = createPinia()
 app.use(pinia)

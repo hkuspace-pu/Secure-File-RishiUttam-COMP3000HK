@@ -5,10 +5,15 @@
  <div class="boxContainer">
 
     <div class="box">
-      <TabMenu v-model:activeIndex="activeTab" :model="items" />
+   
+      <div class="tabMenu">
+        <TabMenu v-model:activeIndex="activeTab" :model="items" />
+
+      </div>
+     
       <div class="encryptBox" v-if="activeTab === 0" id="encrypt">
-      <h3>Secure Send Encrypt</h3>
-<FileUpload mode="basic" name="demo[]"  ref="fileInput" id="fileInput">
+
+<FileUpload chooseLabel="Select File" mode="basic" name="demo[]"  ref="fileInput" id="fileInput">
   <!-- <template #header="{ chooseCallback, uploadCallback, clearCallback, files }">
   </template> -->
 </FileUpload>
@@ -21,7 +26,10 @@
 <div v-if="awsProgress < 100" class="submenu">
       <button :disabled="!fileInput?.files[0]" @click="uploadOnly" id="encryptButton">Upload Only</button>
       <button :disabled="!fileInput?.files[0] || !passphrase" @click="openPGP" id="encryptButton">Use OpenPGP Encryption</button>
+      <button  @click="runCryptoJS" id="encryptButton">Use Crypto-JS Package</button>
       <button :disabled="!fileInput?.files[0] || !passphrase" @click="encrypt" id="encryptButton">Use SecureSend</button>
+      <button  @click="standfordAes" id="encryptButton">Standford AES</button>
+      
       <button @click="genKey" id="encryptButton">GenKey</button>
       <!-- <button @click="encryptPassPhrase " id="encryptButton">RSAPassphrase</button> -->
 </div>
@@ -33,8 +41,8 @@
 </div>
    
     </div>
-    <div class="section" v-else id="decrypt">
-  <h3 >Secure Send - Decrypt</h3>
+    <div class="encryptBox" v-else id="decrypt">
+
 
   <FileUpload mode="basic"  ref="fileInputDecrypt" chooseLabel="Add encrypted file"  name="demo[]" >
 
@@ -151,6 +159,20 @@ import Password from 'primevue/password';
 import FloatLabel from 'primevue/floatlabel';
 import TabMenu from 'primevue/tabmenu';
 import { useToast } from 'primevue/usetoast';
+import * as Comlink from 'comlink'
+
+
+
+
+
+//CRYPTO JS
+// var CryptoJS = require("crypto-js");
+// import sha256 from 'crypto-js/sha256';
+// var AES = require("crypto-js/aes");
+import CryptoJS from 'crypto-js'
+import AES from 'crypto-js/aes';
+// import * as wordArray from 'crypto-js/lib/WordArray'
+
 const toast = useToast();
 const store = useStore()
 // import * as awscrypto from '@aws-crypto/client-browser'
@@ -165,7 +187,7 @@ import Dialog from './components/Dialog.vue'
   import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Tooltip from 'primevue/tooltip';
-
+// import MyWorker from "./workers/comlink?worker";
 let decryptMethod = ref('passphrase');
 let copyText = ref('Copy Symmetric key');
 let fileYourPrivateKey = ref(null)
@@ -188,8 +210,8 @@ const memInfo = ref({
 
     const activeTab = ref(0);
     const items = ref([
-    { label: 'Encrypt', icon: 'pi pi-home' },
-    { label: 'Decrypt', icon: 'pi pi-chart-line' },
+    { label: 'Encrypt File', icon: 'pi pi-lock' },
+    { label: 'Decrypt File', icon: 'pi pi-lock-open' },
   
 ]);
     const chart = ref();
@@ -215,7 +237,7 @@ const memInfo = ref({
 
       },
         xaxis: {
-              categories: ['Baseline', 'OPENPGP', 'SecureSend'],
+              categories: ['Baseline', 'OPENPGP', 'Crypto-JS', 'SecureSend'],
     },
     yaxis: [
     {
@@ -508,6 +530,7 @@ series.value[0].data.push([adjustedNow,memInfo.value.usedJSHeapSize]);
 
     onMounted(() => {
       setInterval(updateMemoryInfo, 1500); // Update every second
+  
     });
 
 const encrypt = async () => {
@@ -549,12 +572,14 @@ console.log('ERROR', error)
 
 
 const uploadS3 = async (fileName, totalBytes ,stream,index) => {
+
+  try {
   const params = {
     Bucket: "securesend2", // YOUR_BUCKET_NAME
     Key: fileName, // Use the file name as the key
     Body: stream
   };
-
+console.log('Starting Upoad')
   const uploader = new Upload({client,params});
   uploader.on('httpUploadProgress', (progress) => {
   awsProgress.value = Math.round((progress.loaded / totalBytes) * 100);
@@ -564,19 +589,22 @@ const uploadS3 = async (fileName, totalBytes ,stream,index) => {
 });
 
 
-await uploader.done();
+const result = await uploader.done();
 toast.add({ severity: 'success', summary: 'Success', detail: 'File Encryption & Uploading Success', life: 4000 })
 
  
     // store.isPublicKeyModalOpen=true
 return result
+  }catch (e) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Upload Error, try again', life: 4000 })
 
+  }
 }
 
 const encryptKey = async () => {
-  console.log('ENCRYPTING KEY')
+
   store.isPublicKeyModalOpen=true
-  console.log('ENCRYPTED KEY', encryptedKey)
+  // console.log('ENCRYPTED KEY', encryptedKey)
 
 }
 
@@ -793,6 +821,89 @@ const checkDisabledDecrypt = computed(() =>{
 })
 
 
+const runCryptoJS =async() => {
+
+  try {
+  // const worker = new Worker('./workers/cryptoJSworker.js');
+  const startTime = performance.now(); 
+  const file = fileInput.value.files[0];
+   const totalBytes = file.size
+    const fileName = file.name
+    const currentMemory = window.performance.memory.usedJSHeapSize
+    const checkMem = setInterval(returnMaxMem, 500);
+    
+    let fileBuffer = await file.arrayBuffer()
+    const u8 = new Uint8Array(fileBuffer)
+
+    const wordArray =  CryptoJS.lib.WordArray.create(u8)
+
+    var ciphertext =  CryptoJS.AES.encrypt(wordArray, passphrase.value)
+    var uint8Array = new TextEncoder().encode(ciphertext);
+    const result = await uploadS3(fileName,totalBytes ,uint8Array, 0)
+    // console.log(result)
+    console.log('finished CRYPTOJS')
+    const endTime = performance.now(); 
+    clearInterval(checkMem)
+      console.log(`CRYPTO JS Encryption took ${endTime - startTime} milliseconds.`);
+    timers.value[0].data.push(parseFloat((endTime - startTime).toFixed(2)))
+    timers.value[1].data.push((Math.max(...usageHighMem.value)) - currentMemory)
+    usageHighMem.value = []
+
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Failed', detail: `CryptoJS Failed - ${e}`, life: 4000 })
+
+  }
+} 
+
+
+const standfordAes = async() => {
+  try {
+// Disabled as Wokers dont provide memory and the code stalls at 200mb.
+// const worker = new Worker(new URL('./workers/comlink.js', import.meta.url), { type: 'classic' });
+// const decrypt = sjcl.decrypt(encrypt.ct,)
+const startTime = performance.now(); 
+  const currentMemory = window.performance.memory.usedJSHeapSize
+const checkMem = setInterval(returnMaxMem, 500);
+const file = fileInput.value.files[0];
+   const totalBytes = file.size
+    const fileName = file.name
+let arrayBuffer = await file.arrayBuffer();
+console.log('starting Standford')
+// worker.postMessage({ passphrase: 'test', arrayBuffer: arrayBuffer }, [arrayBuffer]);
+let byteArray = new Uint8Array(arrayBuffer);
+const bitArray = sjcl.codec.bytes.toBits(byteArray)
+console.log('starting Standford')
+// worker.postMessage({ passphrase: 'test', bitArray: bitArray });
+const enc = sjcl.encrypt("password", bitArray)
+// const blob = new Blob([enc]); // Did not work
+const encoder = new TextEncoder();
+const arrayBufferAWS = encoder.encode(enc);
+console.log('finished encryption!')
+
+const result = await uploadS3(fileName,totalBytes ,enc , 0)
+const endTime = performance.now(); 
+    clearInterval(checkMem)
+    console.log(`Standford Lib Encryption took ${endTime - startTime} milliseconds.`);
+    timers.value[0].data.push(parseFloat((endTime - startTime).toFixed(2)))
+    timers.value[1].data.push((Math.max(...usageHighMem.value)) - currentMemory)
+    usageHighMem.value = []
+console.log(result)
+
+// worker.onmessage = (event) => {
+//   console.log('back from worker')
+//   console.log(event.data)
+
+//   };
+ 
+
+
+}catch(e) {
+  toast.add({ severity: 'error', summary: 'Failed', detail: `Stanford Library - ${e}`, life: 4000 })
+
+}
+
+}
+
 
 const show = (msg) => {
     toast.add({ severity: 'info', summary: 'Info', detail: 'Message Content', life: 3000 });
@@ -851,15 +962,16 @@ margin-left: 2rem;
   margin:1rem;
 flex-direction:row;
 
-/* align-items:center; */
-/* width: 100%; */
-/* width: auto; */
-/* justify-content: space-evenly; */
-/* border-radius:6px; */
-
-
 }
 
+.tabMenu {
+background: #1f0e0e;
+width: fit-content;
+margin:auto;
+border-bottom:1px solid rgb(230, 230, 230);
+/* width: 100%; */
+  
+}
 .box {
   /* border: 1px solid red; */
   padding: 12px;
@@ -921,10 +1033,12 @@ gap:1rem;
 }
 
 .encryptBox {
+  margin: 1.5rem 0;
   display:flex;
   flex-direction:column;
-  justify-content:space-evenly;
-
+  /* gap:1.5rem; */
+  justify-content: space-between;
+align-items: center;
   height: 100%;
   /* border:1px solid red; */
 }
