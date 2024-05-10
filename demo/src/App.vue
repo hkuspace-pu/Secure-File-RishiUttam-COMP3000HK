@@ -26,9 +26,12 @@
 <div v-if="awsProgress < 100" class="submenu">
       <button :disabled="!fileInput?.files[0]" @click="uploadOnly" id="encryptButton">Upload Only</button>
       <button :disabled="!fileInput?.files[0] || !passphrase" @click="openPGP" id="encryptButton">Use OpenPGP Encryption</button>
+      <button :disabled="!fileInput?.files[0] || !passphrase" @click="openPGPStream" id="encryptButton">Use OpenPGP Strteam Encryption</button>
       <button  @click="runCryptoJS" id="encryptButton">Use Crypto-JS Package</button>
       <button :disabled="!fileInput?.files[0] || !passphrase" @click="encrypt" id="encryptButton">Use SecureSend</button>
       <button  @click="standfordAes" id="encryptButton">Standford AES</button>
+      <button  @click="useForge" id="encryptButton">Use Forge</button>
+
       
       <button @click="genKey" id="encryptButton">GenKey</button>
       <!-- <button @click="encryptPassPhrase " id="encryptButton">RSAPassphrase</button> -->
@@ -147,7 +150,7 @@
 </template>
 
 <script setup>
-import { ref,reactive,computed,onMounted } from "vue";
+import { ref,reactive,computed,onMounted,nextTick  } from "vue";
 import * as secure from 'crypto-middleware'
 import * as openpgp from 'openpgp';
 import { S3Client, ListObjectsV2Command,GetObjectCommand } from "@aws-sdk/client-s3";
@@ -159,7 +162,8 @@ import Password from 'primevue/password';
 import FloatLabel from 'primevue/floatlabel';
 import TabMenu from 'primevue/tabmenu';
 import { useToast } from 'primevue/usetoast';
-import * as Comlink from 'comlink'
+import forge from 'node-forge'
+
 
 
 
@@ -170,7 +174,7 @@ import * as Comlink from 'comlink'
 // import sha256 from 'crypto-js/sha256';
 // var AES = require("crypto-js/aes");
 import CryptoJS from 'crypto-js'
-import AES from 'crypto-js/aes';
+;
 // import * as wordArray from 'crypto-js/lib/WordArray'
 
 const toast = useToast();
@@ -441,7 +445,8 @@ const uploadOnly = async () => {
 }
 
 
-const openPGP = async () => {
+const openPGPStream = async () => {
+  try {
   console.log('OPEN  PGP TEST')
   const startTime = performance.now(); 
    const file = fileInput.value.files[0];
@@ -449,10 +454,12 @@ const openPGP = async () => {
     const fileName = file.name
     const currentMemory = window.performance.memory.usedJSHeapSize
     const checkMem = setInterval(returnMaxMem, 500);
-   let fileBuffer = await file.arrayBuffer()
+  //  let fileBuffer = await file.arrayBuffer()
+   const fileStream = file.stream();
+    // const message = await openpgp.createMessage({ binary: new Uint8Array(fileBuffer) });
+    const message = await openpgp.createMessage({ binary: fileStream });
 
-    const message = await openpgp.createMessage({ binary: new Uint8Array(fileBuffer) });
-const encrypted = await openpgp.encrypt({
+    const encrypted = await openpgp.encrypt({
  message:message, // input as Message object
         passwords: ['secret stuff'], // multiple passwords possible
         format: 'binary' // don't ASCII armor (for Uint8Array output)
@@ -462,7 +469,44 @@ const result = await uploadS3(fileName,totalBytes ,encrypted, 0)
 console.log('finished pgp encrypt')
 const endTime = performance.now(); // Capture end time
 clearInterval(checkMem)
-    console.log(`OPEN PGP Encryption took ${endTime - startTime} milliseconds.`);
+    console.log(`OPEN PGP Streaming Encryhption took ${endTime - startTime} milliseconds.`);
+    timers.value[0].data.push(parseFloat((endTime - startTime).toFixed(2)))
+    timers.value[1].data.push((Math.max(...usageHighMem.value)) - currentMemory)
+    usageHighMem.value = []
+    // store.openModal()
+   
+  } catch (e) {
+    console.log(e)
+    toast.add({ severity: 'error', summary: 'Failed', detail: `OPENPGP Streaming Failed - ${e}`, life: 4000 })
+
+  }
+
+}
+
+const openPGP = async () => {
+  console.log('OPEN  PGP TEST')
+  const startTime = performance.now(); 
+   const file = fileInput.value.files[0];
+    const totalBytes = file.size
+    const fileName = file.name
+    const currentMemory = window.performance.memory.usedJSHeapSize
+    const checkMem = setInterval(returnMaxMem, 500);
+   let fileBuffer = await file.arrayBuffer()
+  //  const fileStream = file.stream();
+    const message = await openpgp.createMessage({ binary: new Uint8Array(fileBuffer) });
+    // const message = await openpgp.createMessage({ binary: fileStream });
+    
+    const encrypted = await openpgp.encrypt({
+ message:message, // input as Message object
+        passwords: ['secret stuff'], // multiple passwords possible
+        format: 'binary' // don't ASCII armor (for Uint8Array output)
+    });
+    
+const result = await uploadS3(fileName,totalBytes ,encrypted, 0)
+console.log('finished pgp encrypt')
+const endTime = performance.now(); // Capture end time
+clearInterval(checkMem)
+    console.log(`OPEN PGP EBuffer Encryption took ${endTime - startTime} milliseconds.`);
     timers.value[0].data.push(parseFloat((endTime - startTime).toFixed(2)))
     timers.value[1].data.push((Math.max(...usageHighMem.value)) - currentMemory)
     usageHighMem.value = []
@@ -596,6 +640,7 @@ toast.add({ severity: 'success', summary: 'Success', detail: 'File Encryption & 
     // store.isPublicKeyModalOpen=true
 return result
   }catch (e) {
+    console.log('Upload Error',e)
     toast.add({ severity: 'error', summary: 'Error', detail: 'Upload Error, try again', life: 4000 })
 
   }
@@ -839,6 +884,7 @@ const runCryptoJS =async() => {
 
     var ciphertext =  CryptoJS.AES.encrypt(wordArray, passphrase.value)
     var uint8Array = new TextEncoder().encode(ciphertext);
+    await nextTick();
     const result = await uploadS3(fileName,totalBytes ,uint8Array, 0)
     // console.log(result)
     console.log('finished CRYPTOJS')
@@ -879,7 +925,7 @@ const enc = sjcl.encrypt("password", bitArray)
 const encoder = new TextEncoder();
 const arrayBufferAWS = encoder.encode(enc);
 console.log('finished encryption!')
-
+await nextTick();
 const result = await uploadS3(fileName,totalBytes ,enc , 0)
 const endTime = performance.now(); 
     clearInterval(checkMem)
@@ -904,14 +950,43 @@ console.log(result)
 
 }
 
+const useForge = async () => {
 
-const show = (msg) => {
-    toast.add({ severity: 'info', summary: 'Info', detail: 'Message Content', life: 3000 });
-};
+  const startTime = performance.now(); 
+  const currentMemory = window.performance.memory.usedJSHeapSize
+const checkMem = setInterval(returnMaxMem, 500);
+  const file = fileInput.value.files[0];
+  const totalBytes = file.size
+    const fileName = file.name
+    let arrayBuffer = await file.arrayBuffer();
+  var salt = forge.random.getBytesSync(128);
+var key = forge.pkcs5.pbkdf2(passphrase.value, salt, 10, 16);
+var iv = forge.random.getBytesSync(16);
+console.log('Starting Forge Encryption')
+var cipher = forge.cipher.createCipher('AES-GCM', key);
+cipher.start({iv: iv});
+cipher.update(forge.util.createBuffer(arrayBuffer));
+cipher.finish();
+var encrypted = cipher.output.data;
+console.log('Creating Blob Stream')
+var blob = new Blob([encrypted]);
+var stream = blob.stream();
+//next tick
+// Use nextTick to delay the upload until the next DOM update cycle
+await nextTick();
+const result = await uploadS3(fileName,totalBytes ,stream , 0)
+const endTime = performance.now(); 
+    clearInterval(checkMem)
+    console.log(`Forge Encryption took ${endTime - startTime} milliseconds.`);
+    timers.value[0].data.push(parseFloat((endTime - startTime).toFixed(2)))
+    timers.value[1].data.push((Math.max(...usageHighMem.value)) - currentMemory)
+    usageHighMem.value = []
 
-const showError = (msg) => {
-    toast.add({ severity: 'error', summary: msg, detail: 'Message Content', life: 3000 });
-};
+// outputs encrypted hex
+// console.log(encrypted.toHex());
+}
+
+
 </script>
 
 <style>
