@@ -4,7 +4,8 @@ export const useStore = defineStore("store", {
     state: () => ({
         
             isPublicKeyModalOpen:false,
-            passphrase : ''
+            passphrase : '',
+            testResults : []
         
     }),
     actions: {
