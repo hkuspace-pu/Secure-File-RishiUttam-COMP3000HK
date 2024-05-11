@@ -20,6 +20,15 @@
             </FileUpload>
           </div>
           <progress v-show="inProgress"></progress>
+          <apexchart
+          type="radialBar"
+          height="220px"
+          ref="radialRef"
+          :options="radialOptions"
+          :series="radialSeries"
+        ></apexchart>
+
+
           <FloatLabel>
             <Password
               promptLabel="Passphrase"
@@ -27,7 +36,7 @@
               inputId="passphrase"
               toggleMask
             />
-            <label for="passphrase">Passphrase (symmetric key)</label>
+            <label for="passphrase">Passphrase (key)</label>
           </FloatLabel>
 
           <div class="submenu">
@@ -43,27 +52,27 @@
               @click="openPGP"
               id="encryptButton"
             >
-              Use OpenPGP Encryption
+              Use OpenPGP
             </button>
             <button
               :disabled="!fileInput?.files[0]"
               @click="openPGPStream"
               id="encryptButton"
             >
-              Use OpenPGP Strteam Encryption
+              OpenPGP Stream
             </button>
             <button @click="runCryptoJS" id="encryptButton">
-              Use Crypto-JS Package
+              CryptoJS
             </button>
             <button
               :disabled="!fileInput?.files[0]"
               @click="secureSend"
               id="encryptButton"
             >
-              Use SecureSend
+              SecureSend
             </button>
             <button @click="standfordAes" id="encryptButton">
-              Standford AES
+              Standford
             </button>
             <button @click="useForge" id="encryptButton">Use Forge</button>
 
@@ -88,6 +97,7 @@
 
           <div class="radioOptions">
             <input
+           
               type="radio"
               id="passphrase"
               value="passphrase"
@@ -148,7 +158,7 @@
         </div>
         <apexchart
           type="line"
-          height="400"
+        height="95%"
           ref="chart"
           :options="chartOptions"
           :series="series"
@@ -156,33 +166,28 @@
       </div>
     </div>
 
-    <div class="boxContainer">
-      <a ref="downloadLink" id="downloadLink" style="display: none"
+    <div class="boxContainer two">
+      <!-- <a ref="downloadLink" id="downloadLink" style="display: none"
         >Download file</a
-      >
+      > -->
 
       <div class="box">
        
 
         <apexchart
           ref="mixedChartRef"
-          
+        height="100%"
+
           :options="barChartTimerOptions"
           :series="timers"
         ></apexchart>
       </div>
 
-      <div class="box">
-        <apexchart
-          type="radialBar"
-          ref="radialRef"
-          :options="radialOptions"
-          :series="radialSeries"
-        ></apexchart>
-      </div>
+ 
+      <TestData />
     </div>
 
-    <TestData />
+
 
     <div class="refreshIcon">
       <i @click="listFiles" style="font-size: 1.5rem" class="pi pi-sync"></i>
@@ -261,8 +266,8 @@ const store = useStore();
 const client = new S3Client({
   region: "ap-east-1",
   credentials: {
-    accessKeyId: "AKIAR3HSJBS3T6F7OSEL",
-    secretAccessKey: "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",
+    accessKeyId: import.meta.env.VITE_APP_accessKeyId,
+    secretAccessKey: import.meta.env.VITE_APP_MY_secretAccessKey ,
   },
 });
 import Dialog from "./components/Dialog.vue";
@@ -314,7 +319,7 @@ const testResults = computed({
 
 const barChartTimerOptions = ref({
   chart: {
-    height: "100%"
+    // height: "100"
     // type: '',
   },
 
@@ -402,7 +407,6 @@ const radialOptions = ref({
 const chartOptions = ref({
   chart: {
     id: "realtime",
-    height: 350,
     type: "line",
     animations: {
       enabled: false,
@@ -1205,6 +1209,7 @@ watch(highestMem, (newValue, oldValue) => {
 html body {
   padding: 0;
   margin: 0;
+  box-sizing: border-box;
 }
 </style>
 
@@ -1212,16 +1217,9 @@ html body {
 .container {
   display: flex;
   flex-direction: column;
-  /* gap: 1rem; */
-  /* height: 400px; */
-  /* width: 1600px; */
-  /* max-width: 98vw; */
-  /* margin: auto; */
-  /* margin:0; */
-  /* padding:0; */
-  /* padding: 1rem; */
-  /* padding-top:0; */
-  /* margin-top:0; */
+  /* height: 100%; */
+/* border:1px solid red; */
+/* height: 100vh; */
 }
 
 .showList {
@@ -1239,9 +1237,20 @@ html body {
 }
 .boxContainer {
   display: flex;
-  gap: 1rem;
+  gap: 0.5rem;
   margin: 1rem;
+  /* flex:1; */
+  flex-shrink: 0;
+  height: 550px;
+  /* overflow:scroll; */
+  /* border:2px solid green; */
   flex-direction: row;
+
+  
+}
+
+.two {
+  height: 350px;
 }
 
 .tabMenu {
@@ -1259,8 +1268,11 @@ html body {
   display: flex;
   /* justify-content:space-evenly; */
   gap: 5px;
-  min-width: 420px;
-height: 800px;
+  /* width: 100%; */
+  /* height:100%; */
+ width: 650px;
+
+/* height: 800px; */
   /* height: fit-content; */
   flex-direction: column;
   /* align-items:center; */
@@ -1268,7 +1280,12 @@ height: 800px;
   border: 1px solid rgb(230, 230, 230);
   box-shadow: 0px 10px 15px -3px rgba(0, 0, 0, 0.1);
   /* height: 400px; */
-  /* width: 400px; */
+
+}
+
+.radial {
+  width: 200px;
+  height: fit-content;
 }
 
 .wide {
@@ -1328,6 +1345,7 @@ height: 800px;
   align-items: center;
   justify-content: center;
   gap: 4px;
+  margin: 5px 0;
   flex-wrap: wrap;
 }
 

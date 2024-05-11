@@ -1,6 +1,6 @@
 <template>
   <div v-if="store.testResults">
-  <h3>Test Data</h3>
+  <!-- <h3>Results</h3> -->
       <DataTable resizableColumns lazy stripedRows :value="store.testResults" tableStyle="min-width:60rem">
       <!-- <Column v-for="col of columns" :key="col.field" :field="col.field" :header="col.header"></Column> -->
       <!-- <Column v-for="col of columns" :key="col.software" :field="asd" header="SOFT"></Column> -->
@@ -9,7 +9,7 @@
     <Column :field="callPrettyBytesSize" header="FileSize"></Column>
     <Column field="duration" header="Duration(ms)"></Column>
     <Column :field= "callPrettyBytes" header="Memory"></Column>
-{{store.testResults}}
+<!-- {{store.testResults}} -->
 </DataTable>
 </div>
 </template>
