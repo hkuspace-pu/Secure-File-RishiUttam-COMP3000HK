@@ -142,6 +142,10 @@
       </div>
 
       <div class="box wide">
+        <div class="info">
+          <div>Memory usage: {{ prettyBytes(memInfo.usedJSHeapSize) }}</div>
+          <div v-show="highestMem">Peak: {{ prettyBytes(highestMem) }}</div>
+        </div>
         <apexchart
           type="line"
           height="400"
@@ -158,13 +162,11 @@
       >
 
       <div class="box">
-        <div class="info">
-          <div>Memory usage: {{ prettyBytes(memInfo.usedJSHeapSize) }}</div>
-          <div v-show="highestMem">Peak: {{ prettyBytes(highestMem) }}</div>
-        </div>
+       
 
         <apexchart
           ref="mixedChartRef"
+          
           :options="barChartTimerOptions"
           :series="timers"
         ></apexchart>
@@ -226,7 +228,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from "vue";
+import { ref, watch, computed, onMounted, nextTick } from "vue";
 import * as secure from "crypto-middleware";
 import * as openpgp from "openpgp";
 import {
@@ -312,13 +314,14 @@ const testResults = computed({
 
 const barChartTimerOptions = ref({
   chart: {
-    height: "auto",
+    height: "100%"
     // type: '',
   },
 
   plotOptions: {
     bar: {
-      columnWidth: "25%",
+      // height: "600"
+      // columnWidth: "25%",
     },
   },
   xaxis: {
@@ -407,7 +410,7 @@ const chartOptions = ref({
 
       dynamicAnimation: {
         enabled: true,
-        speed: 1500,
+        speed: 500,
       },
     },
     toolbar: {
@@ -426,10 +429,10 @@ const chartOptions = ref({
   stroke: {
     curve: "smooth",
   },
-  title: {
-    text: "Memory Buffer",
-    align: "left",
-  },
+  // title: {
+  //   text: "Memory Buffer",
+  //   align: "left",
+  // },
   markers: {
     size: 0,
   },
@@ -443,7 +446,7 @@ const chartOptions = ref({
   },
   yaxis: {
     min: 0,
-    max: 200000000, // 100MB,
+    max: 500000000, // 100MB,
     labels: {
       formatter: function (val) {
         return prettyBytes(val);
@@ -696,18 +699,18 @@ const updateMemoryInfo = async () => {
     highestMem.value = max;
   }
 
-  if (max > 200000000) {
-    chart.value.updateOptions({
-      yaxis: {
-        max: max + 10000000,
-        labels: {
-          formatter: function (val) {
-            return prettyBytes(val);
-          },
-        },
-      },
-    });
-  }
+  // if (max > 1000000000) {
+  //   chart.value.updateOptions({
+  //     yaxis: {
+  //       max: max + 10000000,
+  //       labels: {
+  //         formatter: function (val) {
+  //           return prettyBytes(val);
+  //         },
+  //       },
+  //     },
+  //   });
+  // }
   series.value[0].data.push([adjustedNow, memInfo.value.usedJSHeapSize]);
 
   if (series.value[0].data.length > 90) {
@@ -717,7 +720,7 @@ const updateMemoryInfo = async () => {
 };
 
 onMounted(() => {
-  setInterval(updateMemoryInfo, 1500); // Update every second
+  setInterval(updateMemoryInfo, 500); // Update every second
     //  const worker = new Worker(new URL('./workers/checkMem.js', import.meta.url))
 
 
@@ -1045,7 +1048,7 @@ const runCryptoJS = async () => {
 };
 
 const standfordAes = async () => {
-  try {
+
     inProgress.value = true;
     const type = "Standford";
     // Disabled as Wokers dont provide memory and the code stalls at 200mb.
@@ -1053,12 +1056,13 @@ const standfordAes = async () => {
     // const decrypt = sjcl.decrypt(encrypt.ct,)
     console.log("Startd Stanford");
     const startTime = performance.now();
-    const currentMemory = window.performance.memory.usedJSHeapSize;
-    returnMaxMem();
     const checkMem = setInterval(returnMaxMem, 500);
+    returnMaxMem();
+    const currentMemory = window.performance.memory.usedJSHeapSize;
     const file = fileInput.value.files[0];
     const totalBytes = file.size;
     const fileName = file.name;
+    try {
     let arrayBuffer = await file.arrayBuffer();
     console.log("starting Standford");
     // worker.postMessage({ passphrase: 'test', arrayBuffer: arrayBuffer }, [arrayBuffer]);
@@ -1081,24 +1085,35 @@ const standfordAes = async () => {
     );
     const duration = parseFloat((endTime - startTime).toFixed(2));
     const maxMemory = Math.max(...usageHighMem.value) - currentMemory;
-    timers.value[0].data.push(parseFloat((endTime - startTime).toFixed(2)));
-    timers.value[1].data.push(Math.max(...usageHighMem.value) - currentMemory);
+    timers.value[0].data.push(duration);
+    timers.value[1].data.push(maxMemory);
     usageHighMem.value = [];
     addRunData(type, totalBytes, maxMemory, duration);
   } catch (e) {
+    returnMaxMem();
+    console.log('Stanford Error', e)
     toast.add({
       severity: "error",
       summary: "Failed",
       detail: `Stanford Library - ${e}`,
       life: 4000,
     });
+    const endTime = performance.now();
+    clearInterval(checkMem);
+    const duration = parseFloat((endTime - startTime).toFixed(2));
+    const maxMemory = Math.max(...usageHighMem.value) - currentMemory;
+    timers.value[0].data.push(duration);
+    timers.value[1].data.push(maxMemory);
+    usageHighMem.value = [];
+    addRunData(type, totalBytes, maxMemory, duration);
+
   } finally {
     inProgress.value = false;
   }
 };
 
 const useForge = async () => {
-  try {
+ 
     inProgress.value = true;
     const type = "Forge";
     console.log("CryptoJS Test");
@@ -1109,6 +1124,7 @@ const useForge = async () => {
     const file = fileInput.value.files[0];
     const totalBytes = file.size;
     const fileName = file.name;
+    try {
     let arrayBuffer = await file.arrayBuffer();
     var salt = forge.random.getBytesSync(128);
     var key = forge.pkcs5.pbkdf2(passphrase.value, salt, 10, 16);
@@ -1119,7 +1135,7 @@ const useForge = async () => {
     
     cipher.start({ iv: iv });
     cipher.update(forge.util.createBuffer(arrayBuffer));
-     await nextTick();
+
     cipher.finish();
     var encrypted = cipher.output.data;
     console.log("Creating Blob Stream");
@@ -1161,6 +1177,28 @@ function addRunData(type, totalBytes, memory, duration) {
     duration: duration,
   });
 }
+
+
+watch(highestMem, (newValue, oldValue) => {
+      console.log(`Mem Changed ${oldValue} to ${newValue}`);
+      if (newValue > 500000000) {
+        console.log('updating chart')
+    chart.value.updateOptions({
+      yaxis: {
+        max: newValue + 1000000,
+        labels: {
+          formatter: function (val) {
+            return prettyBytes(val);
+          },
+        },
+      },
+    });
+  }
+      
+   
+    });
+    
+// highestMem.value = max;
 </script>
 
 <style>
@@ -1222,10 +1260,11 @@ html body {
   /* justify-content:space-evenly; */
   gap: 5px;
   min-width: 420px;
-  /* height: 100%; */
+height: 800px;
   /* height: fit-content; */
   flex-direction: column;
   /* align-items:center; */
+  /* border:1px solid red; */
   border: 1px solid rgb(230, 230, 230);
   box-shadow: 0px 10px 15px -3px rgba(0, 0, 0, 0.1);
   /* height: 400px; */
@@ -1242,6 +1281,9 @@ html body {
   display: flex;
   flex-direction: row;
   gap: 1rem;
+  font-weight:bold;
+  /* text-emphasis: bold; */
+  font-size:14px;
 }
 .box input {
   padding: 7px;
