@@ -187,7 +187,7 @@
       <TestData />
     </div>
 
-
+<Plots/>
 
     <div class="refreshIcon">
       <i @click="listFiles" style="font-size: 1.5rem" class="pi pi-sync"></i>
@@ -221,6 +221,8 @@
         <Column field="LastModified" header="Upload Date"></Column>
       </DataTable>
     </div>
+
+<!-- <div>{{calculateStats()}}</div> -->
 
     <!-- <Button label="Submit" /> -->
     <div class="foot">
@@ -272,6 +274,7 @@ const client = new S3Client({
 });
 import Dialog from "./components/Dialog.vue";
 import TestData from "./components/TestData.vue";
+import Plots from "./components/Plots.vue";
 import Button from "primevue/button";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
@@ -316,6 +319,7 @@ const testResults = computed({
   get: () => store.testResults,
   set: (value) => store.testResults(value), //
 });
+
 
 const barChartTimerOptions = ref({
   chart: {
@@ -384,10 +388,10 @@ const radialOptions = ref({
     animations: {
         enabled: false,
         easing: 'easeinout',
-        speed: 800,
+        speed: 1000,
         animateGradually: {
             enabled: false,
-            delay: 150
+            delay: 0
         },
         dynamicAnimation: {
             enabled: false,
@@ -414,7 +418,7 @@ const chartOptions = ref({
 
       dynamicAnimation: {
         enabled: true,
-        speed: 500,
+        speed: 1000,
       },
     },
     toolbar: {
@@ -540,7 +544,7 @@ const uploadOnly = async () => {
     const fileName = file.name;
     const currentMemory = window.performance.memory.usedJSHeapSize;
     returnMaxMem();
-    const checkMem = setInterval(returnMaxMem, 500);
+    const checkMem = setInterval(returnMaxMem, 100);
     // let fileBuffer = await file.arrayBuffer()
     // const uint8Array = new Uint8Array(fileBuffer);
     const result = await uploadS3(fileName, totalBytes, file, type);
@@ -579,7 +583,7 @@ const openPGPStream = async () => {
     const fileName = file.name;
     const currentMemory = window.performance.memory.usedJSHeapSize;
     returnMaxMem();
-    const checkMem = setInterval(returnMaxMem, 500);
+    const checkMem = setInterval(returnMaxMem, 200);
     //  let fileBuffer = await file.arrayBuffer()
     const fileStream = file.stream();
     // const message = await openpgp.createMessage({ binary: new Uint8Array(fileBuffer) });
@@ -635,7 +639,7 @@ const openPGP = async () => {
     const fileName = file.name;
     const currentMemory = window.performance.memory.usedJSHeapSize;
     returnMaxMem();
-    const checkMem = setInterval(returnMaxMem, 500);
+    const checkMem = setInterval(returnMaxMem, 200);
     let fileBuffer = await file.arrayBuffer();
 
     const message = await openpgp.createMessage({
@@ -703,18 +707,6 @@ const updateMemoryInfo = async () => {
     highestMem.value = max;
   }
 
-  // if (max > 1000000000) {
-  //   chart.value.updateOptions({
-  //     yaxis: {
-  //       max: max + 10000000,
-  //       labels: {
-  //         formatter: function (val) {
-  //           return prettyBytes(val);
-  //         },
-  //       },
-  //     },
-  //   });
-  // }
   series.value[0].data.push([adjustedNow, memInfo.value.usedJSHeapSize]);
 
   if (series.value[0].data.length > 90) {
@@ -724,7 +716,7 @@ const updateMemoryInfo = async () => {
 };
 
 onMounted(() => {
-  setInterval(updateMemoryInfo, 500); // Update every second
+  setInterval(updateMemoryInfo, 1000); // Update every second
     //  const worker = new Worker(new URL('./workers/checkMem.js', import.meta.url))
 
 
@@ -737,13 +729,13 @@ const secureSend = async () => {
     console.log("SecureSend Test");
     const startTime = performance.now();
     const currentMemory = window.performance.memory.usedJSHeapSize;
-    const checkMem = setInterval(returnMaxMem, 500);
+    returnMaxMem();
+    const checkMem = setInterval(returnMaxMem, 200);
     const file = fileInput.value.files[0];
     const totalBytes = file.size;
     console.log(totalBytes);
     const stream = await secure.startStreaming(file, passphrase.value);
     await uploadS3(file.name, totalBytes, stream, type);
-    returnMaxMem();
     clearInterval(checkMem);
     const endTime = performance.now(); // Capture end time
     console.log(`SecureSend Took ${endTime - startTime} milliseconds.`);
@@ -1015,7 +1007,7 @@ const runCryptoJS = async () => {
     const totalBytes = file.size;
     const fileName = file.name;
     const currentMemory = window.performance.memory.usedJSHeapSize;
-    const checkMem = setInterval(returnMaxMem, 500);
+    const checkMem = setInterval(returnMaxMem, 100);
     returnMaxMem();
     let fileBuffer = await file.arrayBuffer();
     const u8 = new Uint8Array(fileBuffer);
@@ -1060,7 +1052,7 @@ const standfordAes = async () => {
     // const decrypt = sjcl.decrypt(encrypt.ct,)
     console.log("Startd Stanford");
     const startTime = performance.now();
-    const checkMem = setInterval(returnMaxMem, 500);
+    const checkMem = setInterval(returnMaxMem, 200);
     returnMaxMem();
     const currentMemory = window.performance.memory.usedJSHeapSize;
     const file = fileInput.value.files[0];
@@ -1124,7 +1116,7 @@ const useForge = async () => {
     const startTime = performance.now();
     const currentMemory = window.performance.memory.usedJSHeapSize;
     returnMaxMem();
-    const checkMem = setInterval(returnMaxMem, 500);
+    const checkMem = setInterval(returnMaxMem, 200);
     const file = fileInput.value.files[0];
     const totalBytes = file.size;
     const fileName = file.name;
@@ -1173,7 +1165,9 @@ const useForge = async () => {
 };
 
 function addRunData(type, totalBytes, memory, duration) {
-  // Find existing software entry
+
+
+  
   testResults.value.push({
     software: type,
     fileSize: totalBytes,
@@ -1181,6 +1175,14 @@ function addRunData(type, totalBytes, memory, duration) {
     duration: duration,
   });
 }
+
+
+
+
+
+
+
+
 
 
 watch(highestMem, (newValue, oldValue) => {
@@ -1251,6 +1253,7 @@ html body {
 
 .two {
   height: 350px;
+
 }
 
 .tabMenu {
