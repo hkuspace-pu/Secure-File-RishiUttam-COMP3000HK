@@ -28,7 +28,7 @@ export const useStore = defineStore("store", {
 
             // Group data by software and file size
             const groupedData = this.testResults.reduce((acc, item) => {
-                const key = `${item.software} - ${item.fileSize}`;
+                const key = `${item.software}:${item.fileSize}`;
 
                 if (!acc[key]) {
                     acc[key] = [];
@@ -83,7 +83,7 @@ export const useStore = defineStore("store", {
 
         
             // const series = [{data:[{x:'Software-1',y:[50, 66, 69, 75, 88]}]}];
-            const series = [{ name:''data: [] }];
+            const series = [{ data: [] }];
             // return [ { "data": [ { "x": "Baseline - 1052352", "y": [ 339.9, 345.6, 365.4, 376.8, 419.2 ] } ] } ]
             for (const key in this.stats) {
               const group = this.stats[key];
