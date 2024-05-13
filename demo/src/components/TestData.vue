@@ -18,6 +18,7 @@
 <div v-if="store.testResults.length">
   <p>Min,Max, Median for all runs (Duration and Memory)</p>
   <DataTable v-for="(value, key) in store.stats" :key="key" :value="[value]">
+    {{key}}
   <Column field="duration.min" header="Duration Min"></Column>
   <Column field="duration.q1" header="Duration Q1"></Column>
       <Column field="duration.median" header="Duration Median"></Column>

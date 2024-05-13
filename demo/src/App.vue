@@ -1,5 +1,5 @@
 <template>
-  <div class="container">
+  <div class="container" @dragover.prevent  @drop.prevent draggable @drop="handleDrop">
     <Dialog></Dialog>
     <Toast />
     <div class="boxContainer">
@@ -8,7 +8,7 @@
           <TabMenu v-model:activeIndex="activeTab" :model="items" />
         </div>
 
-        <div class="encryptBox" v-if="activeTab === 0" id="encrypt">
+        <div draggable   class="encryptBox" v-if="activeTab === 0" id="encrypt">
           <div v-show="!inProgress">
             <FileUpload
               chooseLabel="Select File"
@@ -16,6 +16,7 @@
               name="demo[]"
               ref="fileInput"
               id="fileInput"
+  
             >
             </FileUpload>
           </div>
@@ -74,7 +75,7 @@
             <button @click="standfordAes" id="encryptButton">
               Standford
             </button>
-            <button @click="useForge" id="encryptButton">Use Forge</button>
+            <button @click="useForge" id="encryptButton">Forge</button>
 
             <!-- <button @click="genKey" id="encryptButton">GenKey</button> -->
             <!-- <button @click="encryptPassPhrase " id="encryptButton">RSAPassphrase</button> -->
@@ -156,6 +157,7 @@
           <div>Memory usage: {{ prettyBytes(memInfo.usedJSHeapSize) }}</div>
           <div v-show="highestMem">Peak: {{ prettyBytes(highestMem) }}</div>
         </div>
+
         <apexchart
           type="line"
         height="95%"
@@ -163,6 +165,7 @@
           :options="chartOptions"
           :series="series"
         ></apexchart>
+        <!-- {{series}} -->
       </div>
     </div>
 
@@ -259,7 +262,7 @@ import forge from "node-forge";
 // var AES = require("crypto-js/aes");
 import CryptoJS from "crypto-js";
 // import * as wordArray from 'crypto-js/lib/WordArray'
-
+const isSaveToDisk = ref(false)
 const toast = useToast();
 const store = useStore();
 // import * as awscrypto from '@aws-crypto/client-browser'
@@ -321,6 +324,12 @@ const testResults = computed({
 });
 
 
+
+const handleDrop = (event) => {
+  event.preventDefault();
+  fileInput.value  = event.dataTransfer.files
+  console.log('DROPPED')
+}
 const barChartTimerOptions = ref({
   chart: {
     // height: "100"
@@ -715,10 +724,11 @@ const updateMemoryInfo = async () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   setInterval(updateMemoryInfo, 1000); // Update every second
     //  const worker = new Worker(new URL('./workers/checkMem.js', import.meta.url))
-
+  //  const mem = await performance.measureUserAgentSpecificMemory()
+  //  console.log(mem)
 
 });
 
@@ -735,7 +745,12 @@ const secureSend = async () => {
     const totalBytes = file.size;
     console.log(totalBytes);
     const stream = await secure.startStreaming(file, passphrase.value);
-    await uploadS3(file.name, totalBytes, stream, type);
+
+    // if (isSaveToDisk) {
+      // await downloadToDisk(file.name, totalBytes, stream, type)
+    // } else {
+      await uploadS3(file.name, totalBytes, stream, type);
+    // }
     clearInterval(checkMem);
     const endTime = performance.now(); // Capture end time
     console.log(`SecureSend Took ${endTime - startTime} milliseconds.`);
@@ -837,6 +852,7 @@ const clearFile = async () => {
 
 const fileInputDecryptFn = async () => {
   try {
+    console.log('In decrypt function')
     const file = fileInputDecrypt.value.files[0];
     const fileHandle = await window.showSaveFilePicker();
     const writable = await fileHandle.createWritable();
@@ -926,6 +942,9 @@ const downloadFile = async (rowData) => {
   }
 };
 
+
+ 
+
 const downloadFileUnecrypted = async (rowData) => {
   try {
     const { Key } = rowData;
@@ -979,13 +998,65 @@ const downloadFileUnecrypted = async (rowData) => {
 
 
 
-const downloadToDisk = (stream) => {
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = 'filename.ext';  // use the actual filename
-  link.click();
+const downloadToDisk = async (fileName, totalBytes, stream,type) => {
+
+  //METHOD ONE WRITABLE
+  try {
+console.log('Dl Direct to Disk')
+
+    inProgress.value = true;
+    const type = "SecureSend";
+    console.log("SecureSend Test");
+   
+    const file = fileInput.value.files[0];
+    const totalBytes = file.size;
+    console.log(totalBytes);
+
+  
+
+    const fileHandle = await window.showSaveFilePicker({
+      suggestedName: file.name+'.enc',
+      startIn: "downloads",
+    });
+
+      const stream = await secure.startStreaming(file, passphrase.value);
+    const writable = await fileHandle.createWritable();
+
+    const startTime = performance.now();
+    const currentMemory = window.performance.memory.usedJSHeapSize;
+    returnMaxMem();
+    const checkMem = setInterval(returnMaxMem, 200);
+    await stream.pipeTo(writable);
+    clearInterval(checkMem);
+    const endTime = performance.now(); // Capture end time
+    console.log(`SecureSend Took ${endTime - startTime} milliseconds.`);
+    const duration = parseFloat((endTime - startTime).toFixed(2));
+    const maxMemory = Math.max(...usageHighMem.value) - currentMemory;
+    timers.value[0].data.push(duration);
+    timers.value[1].data.push(maxMemory);
+    usageHighMem.value = [];
+    addRunData(type, totalBytes, maxMemory, duration);
+
+  // const link = document.createElement('a');
+  // link.href = URL.createObjectURL(blob);
+  // link.download = 'filename.ext';  // use the actual filename
+  // link.click();
+
+
+} catch (e) {
+    console.log(e);
+    toast.add({
+      severity: "error",
+      summary: "Failed",
+      detail: `SecureSend Failed - ${e}`,
+      life: 4000,
+    });
+  } finally {
+    inProgress.value = false;
+  }
 
 }
+
 const checkDisabledDecrypt = computed(() => {
   if (decryptMethod.value == "passphrase") {
     return !fileInputDecrypt.value?.files[0] || !passphrase.value;
@@ -1017,7 +1088,7 @@ const runCryptoJS = async () => {
     var ciphertext = CryptoJS.AES.encrypt(wordArray, passphrase.value);
     var uint8Array = new TextEncoder().encode(ciphertext);
     await nextTick();
-    await uploadS3(fileName, totalBytes, uint8Array, 0);
+    await uploadS3(fileName, totalBytes, uint8Array, type);
     await nextTick();
     console.log("CryptoJS Finished");
     const endTime = performance.now();
@@ -1140,7 +1211,7 @@ const useForge = async () => {
     //next tick
     // Use nextTick to delay the upload until the next DOM update cycle
     await nextTick();
-    await uploadS3(fileName, totalBytes, stream, 0);
+    await uploadS3(fileName, totalBytes, stream, type);
     await nextTick();
     const endTime = performance.now();
     clearInterval(checkMem);
@@ -1174,6 +1245,29 @@ function addRunData(type, totalBytes, memory, duration) {
     memory: memory,
     duration: duration,
   });
+
+
+  console.log(series.value)
+  // Assuming chart is a reference to your chart
+  let latestIndex = series.value[0].data.length - 1;
+  // console.log(latestIndex)
+  let x = series.value[0].data[latestIndex][0]
+  let y = series.value[0].data[latestIndex][1]
+// //   let latestValue = memory;
+
+chart.value.addPointAnnotation({
+  x: x,
+  y: y,
+  label: {
+    text: type,
+         style: {
+                    color: '#fff',
+                    background: '#00E396',
+                     fontSize: '16px'
+                  },
+  },
+})
+
 }
 
 
@@ -1186,7 +1280,7 @@ function addRunData(type, totalBytes, memory, duration) {
 
 
 watch(highestMem, (newValue, oldValue) => {
-      console.log(`Mem Changed ${oldValue} to ${newValue}`);
+      // console.log(`Mem Changed ${oldValue} to ${newValue}`);
       if (newValue > 500000000) {
         console.log('updating chart')
     chart.value.updateOptions({

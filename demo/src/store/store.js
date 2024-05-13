@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-
+import prettyBytes from 'pretty-bytes'
 export const useStore = defineStore("store", {
     state: () => ({
         
@@ -28,6 +28,7 @@ export const useStore = defineStore("store", {
 
             // Group data by software and file size
             const groupedData = this.testResults.reduce((acc, item) => {
+                // const key = `${item.software}:${prettyBytes(item.fileSize)}`;
                 const key = `${item.software}:${item.fileSize}`;
 
                 if (!acc[key]) {
@@ -107,6 +108,7 @@ export const useStore = defineStore("store", {
             const series = [{ data: [] }];
             // return [ { "data": [ { "x": "Baseline - 1052352", "y": [ 339.9, 345.6, 365.4, 376.8, 419.2 ] } ] } ]
             for (const key in this.stats) {
+              console.log(key)
               const group = this.stats[key];
               series[0].data.push({
                 x: key,
@@ -116,6 +118,73 @@ export const useStore = defineStore("store", {
         
             return series;
            
+          }, lineChartDuration() {
+            const series = [];
+            for (const key in this.groupedData) {
+              const group = this.groupedData[key];
+              const [software, fileSize] = key.split(':');
+          
+              // Calculate the median duration
+              const sortedDurations = group.map(item => item.duration).sort((a, b) => a - b);
+              const medianDuration = sortedDurations[Math.floor(sortedDurations.length / 2)];
+          
+              // Find or create the series for this software
+              let serie = series.find(serie => serie.name === software);
+              if (!serie) {
+                serie = { name: software, data: [] };
+                series.push(serie);
+              }
+          
+              // Add the data point to the series
+              serie.data.push({ x: fileSize, y: medianDuration });
+            }
+            series.forEach(serie => {
+              serie.data.sort((a, b) => a.x - b.x);
+            });
+            return series;
+          },
+          lineChartMemory() {
+            const series = [];
+            for (const key in this.groupedData) {
+              const group = this.groupedData[key];
+              const [software, fileSize] = key.split(':');
+          
+              // Calculate the median duration
+              const sortedMemory = group.map(item => item.memory).sort((a, b) => a - b);
+              const medianMemory = sortedMemory[Math.floor(sortedMemory.length / 2)];
+          
+              // Find or create the series for this software
+              let serie = series.find(serie => serie.name === software);
+              if (!serie) {
+                serie = { name: software, data: [] };
+                series.push(serie);
+              }
+          
+              // Add the data point to the series
+              serie.data.push({ x: fileSize, y: medianMemory });
+            }
+            series.forEach(serie => {
+              serie.data.sort((a, b) => a.x - b.x);
+            });
+            return series;
+          },
+          statsWithStdDev() {
+            const statsWithStdDev = { ...this.stats };
+        
+            for (const key in statsWithStdDev) {
+              const group = this.groupedData[key];
+        
+              const durationMean = group.reduce((sum, item) => sum + item.duration, 0) / group.length;
+              const memoryMean = group.reduce((sum, item) => sum + item.memory, 0) / group.length;
+        
+              const durationStdDev = Math.sqrt(group.reduce((sum, item) => sum + Math.pow(item.duration - durationMean, 2), 0) / group.length);
+              const memoryStdDev = Math.sqrt(group.reduce((sum, item) => sum + Math.pow(item.memory - memoryMean, 2), 0) / group.length);
+        
+              statsWithStdDev[key].duration.stdDev = durationStdDev;
+              statsWithStdDev[key].memory.stdDev = memoryStdDev;
+            }
+        
+            return statsWithStdDev;
           }
     },
 }) // Store name

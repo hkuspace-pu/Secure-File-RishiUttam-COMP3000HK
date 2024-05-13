@@ -1,7 +1,7 @@
 <template>
-  <div class="charts">
+  <div class="chartContainer">
 
-
+<div class="boxCharts">
     <div class="boxPlot">
         <apexchart id="duration" type="boxPlot" height="350" :options="optionsDuration" :series="store.boxPlotDuration"></apexchart>
       </div>
@@ -9,23 +9,130 @@
       <div class="boxPlot">
         <apexchart id="memory" type="boxPlot" height="350" :options="optionsMemory" :series="store.boxPlotMemory"></apexchart>
       </div>
-<!-- {{store.boxPlotDuration}} -->
 
+    </div>
+    <div class="boxCharts">
+      <div class="lineChart">
+      <apexchart type="line" height="350" :options="optionsLine" :series="store.lineChartDuration"></apexchart>
+    </div>
+
+    <div class="lineChart">
+      <apexchart type="line" height="350" :options="optionsLineMemory" :series="store.lineChartMemory"></apexchart>
+    </div>
+  </div>
+
+{{store.statsWithStdDev}}
 
 </div>
 
 </template>
 <script setup>
-import { ref } from "vue"
+import { ref,computed } from "vue"
 import prettyBytes from 'pretty-bytes'
 import {useStore} from '../store/store';
 const store = useStore();
 
 
+
+
+const optionsLine = ref({
+    chart: {
+      type: 'line',
+
+      
+    
+      toolbar: {
+        show: true
+      },
+    },
+    markers: {
+size: 7,
+    },
+      
+    stroke: {
+      curve: 'smooth'
+    },
+    xaxis: {
+      // width: '10',
+      type: 'numeric',
+      title: {
+        text: 'File Size'
+      },
+      labels: {
+        formatter: (value) => prettyBytes(+value)
+      },
+    
+    },
+    
+    yaxis: {
+      logarithmic: false,
+      title: {
+        text: 'Median Duration (ms)'
+      },
+      labels: {
+    formatter: (value) => `${Math.floor(value)}ms`
+  }
+    },
+    title: {
+      text: 'Median Duration (ms) by File Size',
+      align: 'left'
+    },
+    tooltip: {
+      x: {
+         formatter: (value) => prettyBytes(+value)
+      }
+    }
+  });
+
+
+  const optionsLineMemory = ref({
+    chart: {
+      type: 'line',
+    
+      toolbar: {
+        show: true
+      },
+    },
+    markers: {
+size: 7,
+    },
+      
+    stroke: {
+      curve: 'smooth'
+    },
+    xaxis: {
+      
+      type: 'numeric',
+      title: {
+        text: 'File Size'
+      },
+      labels: {
+        formatter: (value) => prettyBytes(+value)
+      },
+    },
+    yaxis: {
+      logarithmic: false,
+      title: {
+        text: 'Memory Consumption'
+      },
+      labels: {
+        formatter: (value) => prettyBytes(+value)
+      },
+    },
+    title: {
+      text: 'Median Memory by File Size',
+      align: 'left'
+    },
+    tooltip: {
+      // x: {
+      //   formatter: (value) => prettyBytes(value)
+      // }
+    }
+  });
 const optionsDuration = ref({
   chart: {
               type: 'boxPlot',
-              // height: 350
+        
             },
             title: {
               text: 'Duration (ms)',
@@ -35,6 +142,9 @@ const optionsDuration = ref({
               bar: {
                 horizontal: true,
                 barHeight: '25%'
+              },
+              xaxis: {
+                logarithmic: false,
               },
               boxPlot: {
                 colors: {
@@ -59,10 +169,11 @@ const optionsDuration = ref({
             },
             xaxis: {
     labels: {
-      formatter: function(val) {
-        // Format the x-axis labels
-        return prettyBytes(val);
-      }
+      labels: {
+        formatter: (value) => prettyBytes(+value)
+      },
+   
+      
     }
   },
             plotOptions: {
@@ -87,17 +198,28 @@ const optionsDuration = ref({
 
 <style scoped>
 
-.charts {
+.chartContainer {
   width: 100%;
-  border:1px solid red;
+  display:flex;
+  flex-direction:column;
+  gap:1rem;
+}
+
+.boxCharts {
   display:flex;
   flex-direction:row;
-  gap:1rem;
+  /* width: 50%; */
 }
 
 .boxPlot {
   width: 50%;
-  border:1px solid blue;
+  display:flex;
+  flex-direction:column;
+  gap:1rem;
+}
+
+.lineChart {
+  width: 50%;
   display:flex;
   flex-direction:column;
   gap:1rem;
