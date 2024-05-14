@@ -5,7 +5,7 @@
     <Toast />
     <div class="boxContainer">
       <div class="box">
-        <div class="radio">
+        <div v-show="activeTab === 0" class="radio">
           
                 <InputSwitch inputClass="radio" v-model="store.isCloud" /><div class="cloud"><span v-if="store.isCloud">Cloud</span><span v-else>Disk</span></div>
         </div>
@@ -104,6 +104,15 @@
           >
           </FileUpload>
 
+                   <progress v-show="inProgress"></progress>
+          <apexchart
+          type="radialBar"
+          height="220px"
+          ref="radialRef"
+          :options="radialOptions"
+          :series="radialSeries"
+        ></apexchart>
+
           <div class="radioOptions">
             <input
            
@@ -138,17 +147,18 @@
               mode="basic"
               ref="fileEncryptedKey"
               class="fileSpacer"
-              chooseLabel="Add the encrypted Key"
+              chooseLabel="Encrypted Key"
               name="demo[]"
             />
             <FileUpload
               mode="basic"
               ref="fileYourPrivateKey"
               accept=".json"
-              chooseLabel="Add your Private Key"
+              chooseLabel="Private Key"
               name="demo[]"
             />
           </div>
+          .
 
           <button
             :disabled="checkDisabledDecrypt"
@@ -333,7 +343,7 @@ const bigEncryptFn = async (type)=> {
   const file = fileInput.value.files[0];
   const totalBytes = file.size;
   const fileName = file.name;
-    let returnedData = false
+  let returnedData = false
   console.log(`${type} test started`)
   const currentMemory = window.performance.memory.usedJSHeapSize;
   console.log('currentMemory',currentMemory)
@@ -641,8 +651,8 @@ const returnMaxMem = () => {
   //get the memory from window.performance.memory.jsheapmemory
 
   usageHighMem.value.push(window.performance.memory.usedJSHeapSize);
-console.log('mem',usageHighMem.value)
-// console.log(usageHighMem.value)
+
+
 };
 
 const updateMemoryInfo = async () => {
@@ -759,9 +769,12 @@ const fileInputDecryptFn = async () => {
   try {
     console.log('In decrypt function')
     const file = fileInputDecrypt.value.files[0];
+    const fileStream = file.stream();
+
+  
     const fileHandle = await window.showSaveFilePicker();
     const writable = await fileHandle.createWritable();
-    const fileStream = file.stream();
+  
     let decryptStream;
     if (decryptMethod.value === "passphrase") {
       decryptStream = await secure.decryptStream(passphrase.value);
@@ -781,9 +794,43 @@ const fileInputDecryptFn = async () => {
       // console.log(privateKey)
       decryptStream = await secure.decryptStream(decryptedSharedKey);
     }
-    const decryptedStream = fileStream.pipeThrough(decryptStream);
 
-    await decryptedStream.pipeTo(writable);
+    console.log('filzeSize', file.size)
+
+    let downloadedSize = 0;
+    const progressStream = new TransformStream({
+      transform(chunk, controller) {
+        downloadedSize += chunk.byteLength;
+  
+        awsProgress.value = Math.round(
+          (downloadedSize / file.size) * 99
+        );
+        // console.log(awsProgress.value)
+        radialSeries.value[0] = awsProgress.value;
+        controller.enqueue(chunk);
+      },
+    });
+        await fileStream.pipeThrough(decryptStream).pipeThrough(progressStream).pipeTo(writable)
+
+
+        awsProgress.value = 100
+        radialSeries.value[0] = 100
+        radialRef.value.updateOptions({
+      labels: ["Done!"],
+    });  
+
+
+    // const decryptedStream = fileStream.pipeThrough(decryptStream);
+console.log('Decryption completed')
+    // await decryptedStream.pipeTo(writable);
+    toast.add({
+      severity: "success",
+      summary: "Success",
+      detail: "Decryption OK!",
+      life: 4000,
+    });
+
+
   } catch (e) {
     toast.add({
       severity: "error",
@@ -938,8 +985,29 @@ if (!isStream(obj)) {
     
     console.log('Now Getting time for stream')
     const startTime = performance.now()
- 
-    await obj.pipeTo(writable);
+
+//Build up the progress passthrough stream
+let downloadedSize = 0;
+    const progressStream = new TransformStream({
+      transform(chunk, controller) {
+        console.log(chunk)
+        console.log('length' , chunk.length)
+        downloadedSize += chunk.length;
+  
+        awsProgress.value = Math.round(
+          (downloadedSize / totalBytes) * 100
+        );
+        // console.log(awsProgress.value)
+        radialSeries.value[0] = awsProgress.value;
+        controller.enqueue(chunk);
+      },
+    });
+
+
+
+
+    //Starts the stream
+    await obj.pipeThrough(progressStream).pipeTo(writable);
 
     const endTime = performance.now();
     const duration = parseFloat((endTime - startTime).toFixed(2));
@@ -1005,7 +1073,7 @@ chart.value.addPointAnnotation({
                   },
   },
 })
-  }, 500);
+  }, 250);
 }
 
 
@@ -1145,9 +1213,11 @@ html body {
 
 .radioOptions {
   display: flex;
+  /* margin-top:0; */
   flex-direction: row;
   /* border:1px solid red; */
   gap: 1rem;
+  margin-bottom:1.5rem;
   /* justify-content:space-between; */
 }
 

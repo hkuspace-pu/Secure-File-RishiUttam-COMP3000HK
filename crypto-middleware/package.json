@@ -14,9 +14,10 @@
     "crypto",
     "middleware",
     "encryption",
-    "decryption"
+    "decryption",
+    "clientside"
   ],
-  "author": "Rishi Uttam <support@sinosend.com>",
+  "author": "Rishi Uttam <rishi.uttamchandani@students.plymouth.ac.uk",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/hkuspace-pu/Secure-File-RishiUttam-COMP3000HK/issues"

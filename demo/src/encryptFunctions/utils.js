@@ -14,7 +14,7 @@ const utils = {
       
      async CryptoJS(file) {
 
-      encrypt {
+      encrypt: {
       let fileBuffer = await file.arrayBuffer();
       let u8 = new Uint8Array(fileBuffer);
       const wordArray = CryptoJS.lib.WordArray.create(u8);
@@ -22,7 +22,7 @@ const utils = {
       let encrypted = new TextEncoder().encode(ciphertext);
       return encrypted
       }
-      decrypt {
+      decrypt: {
         
       }
 

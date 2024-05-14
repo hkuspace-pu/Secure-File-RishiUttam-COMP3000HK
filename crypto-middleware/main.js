@@ -5,10 +5,6 @@
 // const chunkSize = 1024 // Size of each chunk in bytes
 let bufferSize = 5 * 1024 * 1024 // 1MB buffer size
 
-console.log('A')
-const cryptoMiddleware = require('crypto-middleware/package.json');
-console.log(cryptoMiddleware.version);
-
 //generate random key and iv
 function generateIV() {
     return crypto.getRandomValues(new Uint8Array(16));
@@ -55,7 +51,7 @@ async function encryptStream(passphrase) {
         },
 
         async transform(chunk, controller) {
-            console.log('Received Chunk', chunk.byteLength);
+
            
             let chunkOffset = 0;
 
@@ -69,7 +65,7 @@ async function encryptStream(passphrase) {
 
                 if (this.bufferLength === this.buffer.byteLength) {
                     const iv = generateIV();
-                    console.log('enc_iv ',iv)
+                
                     const dataToEncrypt = this.buffer.subarray(0, this.bufferLength);
                    
                     const encryptedFile = await crypto.subtle.encrypt(
@@ -87,12 +83,10 @@ async function encryptStream(passphrase) {
               
 
                    const metaDataAndEncryption = handleIV(iv,encryptedFile)
-                   console.log('got meta data and encryption', metaDataAndEncryption.byteLength)
 
 
 
 
-                    console.log('Encypted Chunk Size:', encryptedFile.byteLength)
                    console.log('Enquieing chunk No:', this.chunkCount)
                     controller.enqueue(metaDataAndEncryption);
                     this.buffer = new Uint8Array(bufferSize); // Create a new buffer
@@ -109,8 +103,8 @@ async function encryptStream(passphrase) {
             if (this.bufferLength > 0) {
                 console.log('encrypt flush No.', this.chunkCount)
                 const iv = generateIV();
-                console.log('IV', iv)
-                // console.log('Encrypted Data', encryptedData)
+
+    
                 const dataToEncrypt = this.buffer.subarray(0, this.bufferLength);
                 const encryptedFile = await crypto.subtle.encrypt(
                     {
@@ -123,9 +117,8 @@ async function encryptStream(passphrase) {
 
             
                 );
-                console.log('FLUSH ENCRYPTION FILE', encryptedFile)
+           
                 const metaDataAndEncryption = handleIV(iv,encryptedFile)
-                console.log('got FINAL and encryption', metaDataAndEncryption.byteLength)
                
                 console.log('Last Chunk No.:', this.chunkCount)
                 controller.enqueue(metaDataAndEncryption);
@@ -229,22 +222,18 @@ try {
 
   function extractMeta(encryptedFile) {
 
-
-    console.log('IN EXTRACT META, the passed total enc file with meta is ', encryptedFile.byteLength)
-    console.log('the passed encrypted file to extract method in full', encryptedFile)
     const metadataBuffer = new Uint8Array(encryptedFile.buffer, 0, 23);
     const encryptedData = new Uint8Array(encryptedFile.buffer, 23);
 
     // const encryptedData = new Uint8Array(encryptedFile.buffer, 23,encryptedFile.byteLength - 23);
-    console.log('Meta Data length is :', metadataBuffer.byteLength)
-    console.log('Encrypted Data length is :', encryptedData.byteLength) 
+
 
 
     
     // Parse the metadata
     const iv = metadataBuffer.slice(0, 16);
     const algorithm = new TextDecoder().decode(metadataBuffer.slice(16));
-    console.log('ALGO USED', algorithm)
+  
     return {iv, encryptedData}
 
   }
@@ -258,13 +247,13 @@ try {
 
     return new TransformStream({
         async start() {
-            console.log('in start')
+            console.log('Decrypting Stream')
             if (typeof privateKeyOrPassphrase === 'string') {
        
                 key = await deriveKey(privateKeyOrPassphrase);
          
             } else {
-                console.log('LOOKS LIKE A FILE?')
+                console.log('LOOKS LIKE A FILE')
                 console.log(privateKeyOrPassphrase instanceof File)
                 const privateKey = await privateKeyOrPassphrase.text();
                 key = await decryptPassPhraseWithPrivateKey
@@ -281,12 +270,9 @@ try {
 
         },
 
-    //    async transform(chunk, controller) {
-    //         console.log('Chunk:', chunk.byteLength);
-    //         controller.enqueue(chunk);
-    //     }
 
     async transform(chunk, controller) {
+
         let chunkOffset = 0;
 
         while (chunkOffset < chunk.byteLength) {
@@ -303,15 +289,6 @@ try {
                 const dataToDecrypt = this.buffer.subarray(0, this.bufferLength);
                 const {iv,encryptedData} = extractMeta(dataToDecrypt)
 
-                console.log('IV', iv)
-                console.log('Encrypted Data', encryptedData)
-
-               
-
-
-
-               
-            //  console.log('key to use', key)
                 try {
                     const decryptedChunk = await crypto.subtle.decrypt(
                         {
@@ -323,7 +300,7 @@ try {
                     );
 
                     controller.enqueue(decryptedChunk);
-                    console.log('DECREPT OKAY', this.chunkCount)
+          
                 } catch (e) {
                     console.log('Error decrypting chunk:', e);
                     throw e;
@@ -349,10 +326,10 @@ try {
             const dataToDecrypt = new Uint8Array(this.bufferLength);
             dataToDecrypt.set(this.buffer.subarray(0, this.bufferLength))
 
-            console.log('in flush data  to decrypt', dataToDecrypt)
+         
             const {iv,encryptedData} = extractMeta(dataToDecrypt)
-            console.log('IV', iv)
-            console.log('Encrypted Data', encryptedData)
+            // console.log('IV', iv)
+            // console.log('Encrypted Data', encryptedData)
          
 
             try {
