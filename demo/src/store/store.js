@@ -4,8 +4,11 @@ export const useStore = defineStore("store", {
     state: () => ({
         
             isPublicKeyModalOpen:false,
+            isSettings : true,
             passphrase : '',
-            testResults : []
+            testResults : [],
+            isCloud : true
+          
         
     }),
     actions: {
@@ -108,7 +111,7 @@ export const useStore = defineStore("store", {
             const series = [{ data: [] }];
             // return [ { "data": [ { "x": "Baseline - 1052352", "y": [ 339.9, 345.6, 365.4, 376.8, 419.2 ] } ] } ]
             for (const key in this.stats) {
-              console.log(key)
+
               const group = this.stats[key];
               series[0].data.push({
                 x: key,

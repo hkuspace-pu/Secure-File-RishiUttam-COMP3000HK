@@ -1,10 +1,16 @@
 <template>
   <div class="container" @dragover.prevent  @drop.prevent draggable @drop="handleDrop">
     <Dialog></Dialog>
+    <!-- <Settings></Settings> -->
     <Toast />
     <div class="boxContainer">
       <div class="box">
+        <div class="radio">
+          
+                <InputSwitch inputClass="radio" v-model="store.isCloud" /><div class="cloud"><span v-if="store.isCloud">Cloud</span><span v-else>Disk</span></div>
+        </div>
         <div class="tabMenu">
+  
           <TabMenu v-model:activeIndex="activeTab" :model="items" />
         </div>
 
@@ -15,6 +21,7 @@
               mode="basic"
               name="demo[]"
               ref="fileInput"
+
               id="fileInput"
   
             >
@@ -48,34 +55,35 @@
             >
               Upload Only
             </button>
-            <button
+            <!-- <button
               :disabled="!fileInput?.files[0]"
-              @click="openPGP"
+              @click="bigEncryptFn('OpenPGPBuffer')"
               id="encryptButton"
             >
               Use OpenPGP
-            </button>
+            </button> -->
             <button
               :disabled="!fileInput?.files[0]"
-              @click="openPGPStream"
+              @click="bigEncryptFn('OpenPGPStream')"
               id="encryptButton"
             >
               OpenPGP Stream
             </button>
-            <button @click="runCryptoJS" id="encryptButton">
+            <button @click="bigEncryptFn('CryptoJS')" id="encryptButton">
               CryptoJS
             </button>
             <button
               :disabled="!fileInput?.files[0]"
-              @click="secureSend"
+              @click="bigEncryptFn('SecureSend')"
               id="encryptButton"
             >
               SecureSend
             </button>
-            <button @click="standfordAes" id="encryptButton">
+            <button @click="bigEncryptFn('Stanford')" id="encryptButton">
               Standford
             </button>
-            <button @click="useForge" id="encryptButton">Forge</button>
+
+            <button @click="bigEncryptFn('Forge')" id="encryptButton">Forge</button>
 
             <!-- <button @click="genKey" id="encryptButton">GenKey</button> -->
             <!-- <button @click="encryptPassPhrase " id="encryptButton">RSAPassphrase</button> -->
@@ -240,7 +248,6 @@
 <script setup>
 import { ref, watch, computed, onMounted, nextTick } from "vue";
 import * as secure from "crypto-middleware";
-import * as openpgp from "openpgp";
 import {
   S3Client,
   ListObjectsV2Command,
@@ -254,20 +261,12 @@ import Password from "primevue/password";
 import FloatLabel from "primevue/floatlabel";
 import TabMenu from "primevue/tabmenu";
 import { useToast } from "primevue/usetoast";
-import forge from "node-forge";
 
-//CRYPTO JS
-// var CryptoJS = require("crypto-js");
-// import sha256 from 'crypto-js/sha256';
-// var AES = require("crypto-js/aes");
-import CryptoJS from "crypto-js";
-// import * as wordArray from 'crypto-js/lib/WordArray'
-const isSaveToDisk = ref(false)
+
 const toast = useToast();
 const store = useStore();
-// import * as awscrypto from '@aws-crypto/client-browser'
 
-// store()
+
 const client = new S3Client({
   region: "ap-east-1",
   credentials: {
@@ -276,14 +275,15 @@ const client = new S3Client({
   },
 });
 import Dialog from "./components/Dialog.vue";
+import Settings from "./components/Settings.vue";
 import TestData from "./components/TestData.vue";
 import Plots from "./components/Plots.vue";
 import Button from "primevue/button";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
-import Tooltip from "primevue/tooltip";
-import { sjcl } from "./sjcl.js";
 
+import InputSwitch from 'primevue/inputswitch';
+import utils from './encryptFunctions/utils.js'
 let inProgress = ref(false);
 let decryptMethod = ref("passphrase");
 let copyText = ref("Copy Symmetric key");
@@ -293,8 +293,7 @@ let privateKey = ref(null);
 let publicKey = ref(null);
 let fileInput = ref(null);
 let fileInputDecrypt = ref(null);
-// let fileInputDec = ref(null);
-// let downloadLink = ref(null);
+
 let awsProgress = ref(0);
 let highestMem = ref(0);
 let usageHighMem = ref([]);
@@ -322,6 +321,62 @@ const testResults = computed({
   get: () => store.testResults,
   set: (value) => store.testResults(value), //
 });
+
+
+
+
+const bigEncryptFn = async (type)=> {
+  try {
+  inProgress.value = true
+  radialRef.value.resetSeries()
+
+  const file = fileInput.value.files[0];
+  const totalBytes = file.size;
+  const fileName = file.name;
+    let returnedData = false
+  console.log(`${type} test started`)
+  const currentMemory = window.performance.memory.usedJSHeapSize;
+  console.log('currentMemory',currentMemory)
+  returnMaxMem()
+  const checkMem = setInterval(returnMaxMem, 500);
+  const startTime = performance.now()
+
+  const encrypted = await utils[type](file)
+
+if (store.isCloud) {
+   await uploadS3(fileName, totalBytes, encrypted, type);
+} else {
+    
+    returnedData = await downloadToDisk(fileName, totalBytes, encrypted, type)
+}
+returnMaxMem()
+await nextTick()
+const endTime = performance.now();
+clearInterval(checkMem);
+console.log('Returned Data:', returnedData)
+
+const duration = returnedData || parseFloat((endTime - startTime).toFixed(2));
+console.log(`${type} took ${duration} ms.`);
+const maxMemory = Math.max(...usageHighMem.value) - currentMemory;
+console.log(`${type} Memory: ${maxMemory}`)
+timers.value[0].data.push(duration);
+timers.value[1].data.push(maxMemory);
+usageHighMem.value = [];
+
+addRunData(type, totalBytes, maxMemory, duration);
+  }catch(e) {
+    console.log(e);
+    toast.add({
+      severity: "error",
+      summary: "Failed",
+      detail: `OpenPGP Buffer Error- ${e}`,
+      life: 4000,
+    });
+  } finally {
+    inProgress.value = false;
+  } 
+}
+
 
 
 
@@ -437,7 +492,7 @@ const chartOptions = ref({
       show: true,
     },
     zoom: {
-      enabled: true,
+      enabled: false,
     },
   },
   dataLabels: {
@@ -580,125 +635,14 @@ const uploadOnly = async () => {
   }
 };
 
-const openPGPStream = async () => {
-  try {
-    inProgress.value = true
-    radialRef.value.resetSeries()
-    const type = "PGP Stream";
-    console.log("OPEN  PGP TEST");
-    const startTime = performance.now();
-    const file = fileInput.value.files[0];
-    const totalBytes = file.size;
-    const fileName = file.name;
-    const currentMemory = window.performance.memory.usedJSHeapSize;
-    returnMaxMem();
-    const checkMem = setInterval(returnMaxMem, 200);
-    //  let fileBuffer = await file.arrayBuffer()
-    const fileStream = file.stream();
-    // const message = await openpgp.createMessage({ binary: new Uint8Array(fileBuffer) });
-    const message = await openpgp.createMessage({ binary: fileStream });
 
-    const encrypted = await openpgp.encrypt({
-      message: message, // input as Message object
-      passwords: ["secret stuff"], // multiple passwords possible
-      format: "binary", // don't ASCII armor (for Uint8Array output)
-    });
-
-    await nextTick();
-    await uploadS3(fileName, totalBytes, encrypted, type);
-    await nextTick();
-    console.log("Finished OPEN PGP Stream");
-    const endTime = performance.now(); // Capture end time
-    clearInterval(checkMem);
-    console.log(
-      `OPEN PGP Streaming Encryhption took ${endTime - startTime} milliseconds.`
-    );
-    console.log(
-      `OPEN PGP Max Mem ${Math.max(...usageHighMem.value) - currentMemory}`
-    );
-    const duration = parseFloat((endTime - startTime).toFixed(2));
-    const maxMemory = Math.max(...usageHighMem.value) - currentMemory;
-    timers.value[0].data.push(duration);
-    timers.value[1].data.push(maxMemory);
-    usageHighMem.value = [];
-    addRunData(type, totalBytes, maxMemory, duration);
-    // store.openModal()
-  } catch (e) {
-    console.log(e);
-    toast.add({
-      severity: "error",
-      summary: "Failed",
-      detail: `OPENPGP Streaming Failed - ${e}`,
-      life: 4000,
-    });
-    
-  }   finally {
-    inProgress.value = false;
-  }
-};
-
-const openPGP = async () => {
-  try {
-    inProgress.value = true;
-    const type = "OpenPGP-Buffer";
-    console.log("OpenPGP-Buffer Test");
-    const startTime = performance.now();
-    const file = fileInput.value.files[0];
-    const totalBytes = file.size;
-    const fileName = file.name;
-    const currentMemory = window.performance.memory.usedJSHeapSize;
-    returnMaxMem();
-    const checkMem = setInterval(returnMaxMem, 200);
-    let fileBuffer = await file.arrayBuffer();
-
-    const message = await openpgp.createMessage({
-      binary: new Uint8Array(fileBuffer),
-    });
-
-    const encrypted = await openpgp.encrypt({
-      message: message, // input as Message object
-      passwords: ["secret stuff"], // multiple passwords possible
-      format: "binary", // don't ASCII armor (for Uint8Array output)
-    });
-    await nextTick();
-    const result = await uploadS3(fileName, totalBytes, encrypted, type);
-     await nextTick();
-    console.log("Fin PGP Buffer Encrypt");
-    const endTime = performance.now(); // Capture end time
-    clearInterval(checkMem);
-    console.log(
-      `OPEN PGP EBuffer Encryption took ${endTime - startTime} milliseconds.`
-    );
-    const duration = parseFloat((endTime - startTime).toFixed(2));
-    const maxMemory = Math.max(...usageHighMem.value) - currentMemory;
-    timers.value[0].data.push(duration);
-    timers.value[1].data.push(maxMemory);
-    usageHighMem.value = [];
-    addRunData(type, totalBytes, maxMemory, duration);
-    // store.openModal()
-  } catch (e) {
-    console.log(e);
-    toast.add({
-      severity: "error",
-      summary: "Failed",
-      detail: `OpenPGP Buffer Error- ${e}`,
-      life: 4000,
-    });
-  } finally {
-    inProgress.value = false;
-  }
-};
-
-const s3encrypt = async () => {
-  const plainText = new Uint8Array([1, 2, 3, 4, 5]);
-  // const { result } = await awscrypto.encrypt('1234', plainText, { encryptionContext: context })
-  console.log(result);
-};
 
 const returnMaxMem = () => {
   //get the memory from window.performance.memory.jsheapmemory
 
   usageHighMem.value.push(window.performance.memory.usedJSHeapSize);
+console.log('mem',usageHighMem.value)
+// console.log(usageHighMem.value)
 };
 
 const updateMemoryInfo = async () => {
@@ -728,50 +672,11 @@ onMounted(async () => {
   setInterval(updateMemoryInfo, 1000); // Update every second
     //  const worker = new Worker(new URL('./workers/checkMem.js', import.meta.url))
   //  const mem = await performance.measureUserAgentSpecificMemory()
-  //  console.log(mem)
+ 
 
 });
 
-const secureSend = async () => {
-  try {
-    inProgress.value = true;
-    const type = "SecureSend";
-    console.log("SecureSend Test");
-    const startTime = performance.now();
-    const currentMemory = window.performance.memory.usedJSHeapSize;
-    returnMaxMem();
-    const checkMem = setInterval(returnMaxMem, 200);
-    const file = fileInput.value.files[0];
-    const totalBytes = file.size;
-    console.log(totalBytes);
-    const stream = await secure.startStreaming(file, passphrase.value);
 
-    // if (isSaveToDisk) {
-      // await downloadToDisk(file.name, totalBytes, stream, type)
-    // } else {
-      await uploadS3(file.name, totalBytes, stream, type);
-    // }
-    clearInterval(checkMem);
-    const endTime = performance.now(); // Capture end time
-    console.log(`SecureSend Took ${endTime - startTime} milliseconds.`);
-    const duration = parseFloat((endTime - startTime).toFixed(2));
-    const maxMemory = Math.max(...usageHighMem.value) - currentMemory;
-    timers.value[0].data.push(duration);
-    timers.value[1].data.push(maxMemory);
-    usageHighMem.value = [];
-    addRunData(type, totalBytes, maxMemory, duration);
-  } catch (e) {
-    console.log(e);
-    toast.add({
-      severity: "error",
-      summary: "Failed",
-      detail: `SecureSend Failed - ${e}`,
-      life: 4000,
-    });
-  } finally {
-    inProgress.value = false;
-  }
-};
 
 const uploadS3 = async (fileName, totalBytes, stream, type) => {
   try {
@@ -795,7 +700,7 @@ const uploadS3 = async (fileName, totalBytes, stream, type) => {
       labels: ["Uploading"],
     });
 
-    const result = await uploader.done();
+     await uploader.done();
     radialRef.value.updateOptions({
       labels: ["Uploaded"],
     });
@@ -814,7 +719,7 @@ const uploadS3 = async (fileName, totalBytes, stream, type) => {
     });
 
     // store.isPublicKeyModalOpen=true
-    return result;
+    // return result;
   } catch (e) {
     console.log("Upload Error", e);
     toast.add({
@@ -998,51 +903,50 @@ const downloadFileUnecrypted = async (rowData) => {
 
 
 
-const downloadToDisk = async (fileName, totalBytes, stream,type) => {
+
+
+
+const downloadToDisk =  async (fileName, totalBytes, obj, type) => {
 
   //METHOD ONE WRITABLE
   try {
 console.log('Dl Direct to Disk')
 
-    inProgress.value = true;
-    const type = "SecureSend";
-    console.log("SecureSend Test");
-   
-    const file = fileInput.value.files[0];
-    const totalBytes = file.size;
-    console.log(totalBytes);
-
+    function isStream(obj) {
+  return obj instanceof ReadableStream || obj instanceof WritableStream || (obj && obj.readable instanceof ReadableStream && obj.writable instanceof WritableStream);
+}
   
+console.log('Is Stream?',isStream(obj))
 
-    const fileHandle = await window.showSaveFilePicker({
-      suggestedName: file.name+'.enc',
+if (!isStream(obj)) {
+  const blob = new Blob([obj]);
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${type}-${fileName}`
+  link.click();
+  URL.revokeObjectURL(link.href);
+  
+} else {
+  console.log('This is a streaming dl')
+  usageHighMem.value = [];
+  const fileHandle = await window.showSaveFilePicker({
+      suggestedName: `${type}-${fileName}`,
       startIn: "downloads",
     });
 
-      const stream = await secure.startStreaming(file, passphrase.value);
     const writable = await fileHandle.createWritable();
+    
+    console.log('Now Getting time for stream')
+    const startTime = performance.now()
+ 
+    await obj.pipeTo(writable);
 
-    const startTime = performance.now();
-    const currentMemory = window.performance.memory.usedJSHeapSize;
-    returnMaxMem();
-    const checkMem = setInterval(returnMaxMem, 200);
-    await stream.pipeTo(writable);
-    clearInterval(checkMem);
-    const endTime = performance.now(); // Capture end time
-    console.log(`SecureSend Took ${endTime - startTime} milliseconds.`);
+    const endTime = performance.now();
     const duration = parseFloat((endTime - startTime).toFixed(2));
-    const maxMemory = Math.max(...usageHighMem.value) - currentMemory;
-    timers.value[0].data.push(duration);
-    timers.value[1].data.push(maxMemory);
-    usageHighMem.value = [];
-    addRunData(type, totalBytes, maxMemory, duration);
+    return duration
 
-  // const link = document.createElement('a');
-  // link.href = URL.createObjectURL(blob);
-  // link.download = 'filename.ext';  // use the actual filename
-  // link.click();
-
-
+}
+  
 } catch (e) {
     console.log(e);
     toast.add({
@@ -1067,178 +971,10 @@ const checkDisabledDecrypt = computed(() => {
   }
 });
 
-const runCryptoJS = async () => {
-  try {
-    // const worker = new Worker('./workers/cryptoJSworker.js');
-    inProgress.value = true;
-    const type = "CryptoJS";
-    console.log("CryptoJS Test");
-    const startTime = performance.now();
-    const file = fileInput.value.files[0];
-    const totalBytes = file.size;
-    const fileName = file.name;
-    const currentMemory = window.performance.memory.usedJSHeapSize;
-    const checkMem = setInterval(returnMaxMem, 100);
-    returnMaxMem();
-    let fileBuffer = await file.arrayBuffer();
-    const u8 = new Uint8Array(fileBuffer);
-
-    const wordArray = CryptoJS.lib.WordArray.create(u8);
-
-    var ciphertext = CryptoJS.AES.encrypt(wordArray, passphrase.value);
-    var uint8Array = new TextEncoder().encode(ciphertext);
-    await nextTick();
-    await uploadS3(fileName, totalBytes, uint8Array, type);
-    await nextTick();
-    console.log("CryptoJS Finished");
-    const endTime = performance.now();
-    clearInterval(checkMem);
-    console.log(
-      `CRYPTO JS Encryption took ${endTime - startTime} milliseconds.`
-    );
-    const duration = parseFloat((endTime - startTime).toFixed(2));
-    const maxMemory = Math.max(...usageHighMem.value) - currentMemory;
-    timers.value[0].data.push(duration);
-    timers.value[1].data.push(maxMemory);
-    usageHighMem.value = [];
-    addRunData(type, totalBytes, maxMemory, duration);
-  } catch (e) {
-    toast.add({
-      severity: "error",
-      summary: "Failed",
-      detail: `CryptoJS Failed - ${e}`,
-      life: 4000,
-    });
-  } finally {
-    inProgress.value = false;
-  }
-};
-
-const standfordAes = async () => {
-
-    inProgress.value = true;
-    const type = "Standford";
-    // Disabled as Wokers dont provide memory and the code stalls at 200mb.
-    // const worker = new Worker(new URL('./workers/comlink.js', import.meta.url), { type: 'classic' });
-    // const decrypt = sjcl.decrypt(encrypt.ct,)
-    console.log("Startd Stanford");
-    const startTime = performance.now();
-    const checkMem = setInterval(returnMaxMem, 200);
-    returnMaxMem();
-    const currentMemory = window.performance.memory.usedJSHeapSize;
-    const file = fileInput.value.files[0];
-    const totalBytes = file.size;
-    const fileName = file.name;
-    try {
-    let arrayBuffer = await file.arrayBuffer();
-    console.log("starting Standford");
-    // worker.postMessage({ passphrase: 'test', arrayBuffer: arrayBuffer }, [arrayBuffer]);
-    let byteArray = new Uint8Array(arrayBuffer);
-    const bitArray = sjcl.codec.bytes.toBits(byteArray);
-    console.log("starting Standford");
-    // worker.postMessage({ passphrase: 'test', bitArray: bitArray });
-    const enc = sjcl.encrypt("password", bitArray);
-    // const blob = new Blob([enc]); // Did not work
-    // const encoder = new TextEncoder();
-    // const arrayBufferAWS = encoder.encode(enc);
-    console.log("finished encryption!");
-    await nextTick();
-    const result = await uploadS3(fileName, totalBytes, enc, type);
-     await nextTick();
-    const endTime = performance.now();
-    clearInterval(checkMem);
-    console.log(
-      `Standford Lib Encryption took ${endTime - startTime} milliseconds.`
-    );
-    const duration = parseFloat((endTime - startTime).toFixed(2));
-    const maxMemory = Math.max(...usageHighMem.value) - currentMemory;
-    timers.value[0].data.push(duration);
-    timers.value[1].data.push(maxMemory);
-    usageHighMem.value = [];
-    addRunData(type, totalBytes, maxMemory, duration);
-  } catch (e) {
-    returnMaxMem();
-    console.log('Stanford Error', e)
-    toast.add({
-      severity: "error",
-      summary: "Failed",
-      detail: `Stanford Library - ${e}`,
-      life: 4000,
-    });
-    const endTime = performance.now();
-    clearInterval(checkMem);
-    const duration = parseFloat((endTime - startTime).toFixed(2));
-    const maxMemory = Math.max(...usageHighMem.value) - currentMemory;
-    timers.value[0].data.push(duration);
-    timers.value[1].data.push(maxMemory);
-    usageHighMem.value = [];
-    addRunData(type, totalBytes, maxMemory, duration);
-
-  } finally {
-    inProgress.value = false;
-  }
-};
-
-const useForge = async () => {
  
-    inProgress.value = true;
-    const type = "Forge";
-    console.log("CryptoJS Test");
-    const startTime = performance.now();
-    const currentMemory = window.performance.memory.usedJSHeapSize;
-    returnMaxMem();
-    const checkMem = setInterval(returnMaxMem, 200);
-    const file = fileInput.value.files[0];
-    const totalBytes = file.size;
-    const fileName = file.name;
-    try {
-    let arrayBuffer = await file.arrayBuffer();
-    var salt = forge.random.getBytesSync(128);
-    var key = forge.pkcs5.pbkdf2(passphrase.value, salt, 10, 16);
-    var iv = forge.random.getBytesSync(16);
-    console.log("Starting Forge Encryption");
-     await nextTick();
-    var cipher = forge.cipher.createCipher("AES-GCM", key);
-    
-    cipher.start({ iv: iv });
-    cipher.update(forge.util.createBuffer(arrayBuffer));
 
-    cipher.finish();
-    var encrypted = cipher.output.data;
-    console.log("Creating Blob Stream");
-    var blob = new Blob([encrypted]);
-    var stream = blob.stream();
-    //next tick
-    // Use nextTick to delay the upload until the next DOM update cycle
-    await nextTick();
-    await uploadS3(fileName, totalBytes, stream, type);
-    await nextTick();
-    const endTime = performance.now();
-    clearInterval(checkMem);
-    console.log(`Forge Encryption took ${endTime - startTime} milliseconds.`);
-    const duration = parseFloat((endTime - startTime).toFixed(2));
-    const maxMemory = Math.max(...usageHighMem.value) - currentMemory;
-    timers.value[0].data.push(duration);
-    timers.value[1].data.push(maxMemory);
-    usageHighMem.value = [];
-    addRunData(type, totalBytes, maxMemory, duration);
-  } catch (e) {
-    console.log(e);
-    toast.add({
-      severity: "error",
-      summary: "Failed",
-      detail: `Forge Failed - ${e}`,
-      life: 4000,
-    });
-  } finally {
-    inProgress.value = false;
-  }
-};
+async function addRunData(type, totalBytes, memory, duration) {
 
-function addRunData(type, totalBytes, memory, duration) {
-
-
-  
   testResults.value.push({
     software: type,
     fileSize: totalBytes,
@@ -1247,10 +983,12 @@ function addRunData(type, totalBytes, memory, duration) {
   });
 
 
-  console.log(series.value)
+ 
+
   // Assuming chart is a reference to your chart
+  setTimeout(() => {
   let latestIndex = series.value[0].data.length - 1;
-  // console.log(latestIndex)
+
   let x = series.value[0].data[latestIndex][0]
   let y = series.value[0].data[latestIndex][1]
 // //   let latestValue = memory;
@@ -1267,15 +1005,8 @@ chart.value.addPointAnnotation({
                   },
   },
 })
-
+  }, 500);
 }
-
-
-
-
-
-
-
 
 
 
@@ -1298,7 +1029,6 @@ watch(highestMem, (newValue, oldValue) => {
    
     });
     
-// highestMem.value = max;
 </script>
 
 <style>
@@ -1462,5 +1192,22 @@ button {
   color: white;
   padding: 0.2rem 0.5rem;
   background-color: #2563eb;
+}
+
+
+.radio {
+  display:flex;
+  align-items:center;
+  /* justify-content:center; */
+  gap:0.5rem;
+  margin:2px;
+}
+
+.cloud {
+  font-size:12px;
+  padding:4px 6px;
+  background-color:green;
+  border-radius:6px;
+  color:white;
 }
 </style>
