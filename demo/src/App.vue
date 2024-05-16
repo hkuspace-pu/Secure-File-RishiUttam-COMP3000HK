@@ -4,6 +4,11 @@
     <Toast />
     <div class="boxContainer">
       <div class="box">
+        <div v-show="activeTab === 0" class="radio">
+          
+                <InputSwitch inputClass="radio" v-model="store.isCloud" /><div class="cloud"><span v-if="store.isCloud">Cloud</span><span v-else>Disk</span></div>
+        
+              </div>
         <div class="tabMenu">
           <TabMenu v-model:activeIndex="activeTab" :model="items" />
         </div>
