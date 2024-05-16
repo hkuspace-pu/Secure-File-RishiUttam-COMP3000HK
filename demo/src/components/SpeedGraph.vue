@@ -5,7 +5,7 @@
         height="100%"
 
           :options="speedChartOptions"
-          :series="store.speed"
+          :series="SpeedSeries"
         ></apexchart>
 
 
@@ -17,8 +17,6 @@ import { ref,computed } from "vue"
 import prettyBytes from 'pretty-bytes'
 import {useStore} from '../store/store';
 const store = useStore();
-
-
 
 const SpeedSeries = ref([{
             data: [44, 55, 41, 64, 22, 43, 21]
