@@ -171,7 +171,7 @@ export const useStore = defineStore("store", {
             });
             return series;
           },
-          statsWithStdDev() {
+          statsWithStdDev() { // NOT SURE IF IT WORKS
             const statsWithStdDev = { ...this.stats };
         
             for (const key in statsWithStdDev) {
@@ -188,7 +188,31 @@ export const useStore = defineStore("store", {
             }
         
             return statsWithStdDev;
+          },
+          speed() {
+            function calculateSpeed(bytes, durationInMilliseconds) {
+              const bytesToMB = bytes * 1.0E-6;
+              const durationInSeconds = durationInMilliseconds / 1000;
+              return bytesToMB / durationInSeconds;
+            }
+            const avgSpeed = [];
+
+            for (const key in this.stats) {
+              const group = this.stats[key];
+              const totalBytes = Number(key.split(':')[1]);
+              const speed = calculateSpeed(totalBytes, group.duration.median);
+          
+              avgSpeed.push({
+                name: key,
+                data: [{ x: speed, y: key }],
+              });
+            }
+          
+            return avgSpeed;
+
           }
+
+
     },
 }) // Store name
 

@@ -472,7 +472,7 @@ const radialOptions = ref({
             speed: 350
         }
     }
-
+ 
     
   },
   labels: ["Progress"],
@@ -990,7 +990,6 @@ if (!isStream(obj)) {
 let downloadedSize = 0;
     const progressStream = new TransformStream({
       transform(chunk, controller) {
-        console.log(chunk)
         console.log('length' , chunk.length)
         downloadedSize += chunk.length;
   
