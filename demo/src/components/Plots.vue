@@ -21,7 +21,7 @@
     </div>
   </div>
 
-{{store.statsWithStdDev}}
+<!-- {{store.statsWithStdDev}} -->
 
 </div>
 

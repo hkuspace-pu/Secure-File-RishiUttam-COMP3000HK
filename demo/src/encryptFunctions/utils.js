@@ -30,7 +30,7 @@ const utils = {
     async SecureSend(file) {
  
         const stream = await secure.startStreaming(file, passphrase.value);
-        console.log('stream', stream)
+
       return stream
     },
     async OpenPGPStream (file) {
