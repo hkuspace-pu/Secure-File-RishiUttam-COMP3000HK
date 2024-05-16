@@ -1,0 +1,67 @@
+<template>
+  <div class="testData">
+  <!-- <h3>Results</h3> -->
+      <DataTable sortField="duration" :sortOrder="-1" resizableColumns lazy stripedRows :value="store.testResults" tableStyle="min-width:60rem">
+    <Column dataKey="software" field="software" header="Software"></Column>
+    <Column dataKey="fileSize" :field="callPrettyBytesSize" header="FileSize"></Column>
+    <Column dataKey="duration" :sortable="true" field="duration" header="Duration(ms)"></Column>
+    <Column dataKey="memory" sortable :field= "callPrettyBytes" header="Memory"></Column>
+</DataTable>
+<!-- {{console.table(store.groupedData)}}
+{{store.groupedData}} -->
+<p></p>
+<!-- {{console.table(store.stats)}} -->
+<!-- {{store.stats}} -->
+
+
+
+<div v-if="store.testResults.length">
+  <p>Min,Max, Median for all runs (Duration and Memory)</p>
+  <DataTable v-for="(value, key) in store.stats" :key="key" :value="[value]">
+    {{key}}
+  <Column field="duration.min" header="Duration Min"></Column>
+  <Column field="duration.q1" header="Duration Q1"></Column>
+      <Column field="duration.median" header="Duration Median"></Column>
+      <Column field="duration.q3" header="Duration Q3"></Column>
+      <Column field="duration.max" header="Duration Max"></Column>
+      <Column field="memory.min" header="Memory Min"></Column>
+      <Column field="memory.q1" header="Memory Q1"></Column>
+      <Column field="memory.median" header="Memory Median"></Column>
+      <Column field="memory.q3" header="Memory Q3"></Column>
+      <Column field="memory.max" header="Memory Max"></Column>
+    </DataTable>
+
+</div>
+
+</div>
+
+</template>
+<script setup>
+import { ref } from "vue"
+import prettyBytes from 'pretty-bytes'
+import {useStore} from '../store/store';
+const store = useStore();
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column';
+
+
+const stats = ref(store.stats);
+const callPrettyBytes = (value) => {
+  // console.log('pp',value.Size)
+  return prettyBytes(value.memory)
+}
+const callPrettyBytesSize = (value) => {
+  // console.log('pp',value.Size)
+  return prettyBytes(value.fileSize)
+}
+
+
+
+</script>
+
+<style scoped>
+.testData {
+  overflow-y:scroll;
+  width: 100%;
+}
+</style>

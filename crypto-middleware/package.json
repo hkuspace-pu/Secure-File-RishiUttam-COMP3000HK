@@ -1,10 +1,11 @@
 {
   "name": "crypto-middleware",
-  "version": "1.0.7",
+  "version": "1.0.10",
   "description": "A browser middleware for handling client side encryption prior to uploading to the cloud",
   "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "docs": "jsdoc2md main.js > README.md"
   },
   "repository": {
     "type": "git",
@@ -14,9 +15,10 @@
     "crypto",
     "middleware",
     "encryption",
-    "decryption"
+    "decryption",
+    "clientside"
   ],
-  "author": "Rishi Uttam <support@sinosend.com>",
+  "author": "Rishi Uttam <rishi.uttamchandani@students.plymouth.ac.uk",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/hkuspace-pu/Secure-File-RishiUttam-COMP3000HK/issues"
