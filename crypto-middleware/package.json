@@ -1,6 +1,6 @@
 {
   "name": "crypto-middleware",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "A browser middleware for handling client side encryption prior to uploading to the cloud",
   "main": "main.js",
   "scripts": {

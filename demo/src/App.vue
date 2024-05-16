@@ -990,7 +990,7 @@ if (!isStream(obj)) {
 let downloadedSize = 0;
     const progressStream = new TransformStream({
       transform(chunk, controller) {
-        console.log('length' , chunk.length)
+    
         downloadedSize += chunk.length;
   
         awsProgress.value = Math.round(
