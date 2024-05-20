@@ -7,7 +7,8 @@ export const useStore = defineStore("store", {
             isSettings : true,
             passphrase : '',
             testResults : [],
-            isCloud : true
+            isCloud : true,
+         
           
         
     }),
@@ -22,6 +23,11 @@ export const useStore = defineStore("store", {
         setPassphrase(value) {
             this.passphrase = value
         },
+  
+
+
+
+
     },
     getters: {
         groupedData() {
@@ -188,29 +194,40 @@ export const useStore = defineStore("store", {
             }
         
             return statsWithStdDev;
-          },
-          speed() {
+          },      speed() {
             function calculateSpeed(bytes, durationInMilliseconds) {
               const bytesToMB = bytes * 1.0E-6;
               const durationInSeconds = durationInMilliseconds / 1000;
               return bytesToMB / durationInSeconds;
             }
-            const avgSpeed = [];
-
-            for (const key in this.stats) {
-              const group = this.stats[key];
-              const totalBytes = Number(key.split(':')[1]);
-              const speed = calculateSpeed(totalBytes, group.duration.median);
+            const avgSpeed = []
+  
+          for (const key in this.stats) {
+    const group = this.stats[key];
+    const totalBytes = Number(key.split(':')[1]);
+    const speed = calculateSpeed(totalBytes, group.duration.median);
+  
+    avgSpeed.push({
+      name: key,
+      data: [speed],
+    });
+    
+  }
           
-              avgSpeed.push({
-                name: key,
-                data: [{ x: speed, y: key }],
-              });
-            }
-          
+  // this.speedChartOptions.xaxis.cate gories = key.split(':')[0]
+  
             return avgSpeed;
+  
+          },
+          
 
-          }
+           speedLabels() {
+            const labels = [];
+            for (const key in this.stats) {
+              labels.push(key.split(':')[0]);
+            }
+            return labels;
+          },
 
 
     },

@@ -22,14 +22,17 @@ It is important to keep the buffersize the same for both encryption and decrypti
 
 let bufferSize = 5 * 1024 * 1024 // 5MB buffer size
 
-
 async function startStreaming(file, passPhrase) {
-
+try {
     const fileStream = await readFileChunk(file);
     const encryptionStream = await encryptStream(passPhrase);
     const encryptedStream = await fileStream.pipeThrough(encryptionStream)
 
     return encryptedStream
+} catch (e){
+    console.log('An error occurred during streaming encryption:', e)
+    throw e
+}
 }
 
 

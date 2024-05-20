@@ -206,7 +206,8 @@
       </div>
 
  
-      <TestData />
+      <SpeedGraph/>
+      <!-- <TestData /> -->
     </div>
 
 <Plots/>
@@ -287,6 +288,8 @@ const client = new S3Client({
 });
 import Dialog from "./components/Dialog.vue";
 import Settings from "./components/Settings.vue";
+import SpeedGraph from "./components/SpeedGraph.vue";
+
 import TestData from "./components/TestData.vue";
 import Plots from "./components/Plots.vue";
 import Button from "primevue/button";
