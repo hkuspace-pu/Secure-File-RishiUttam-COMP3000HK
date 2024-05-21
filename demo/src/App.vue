@@ -981,7 +981,7 @@ if (!isStream(obj)) {
   console.log('This is a streaming dl')
   usageHighMem.value = [];
   const fileHandle = await window.showSaveFilePicker({
-      suggestedName: `${type}-${fileName}`,
+      suggestedName: `${type}-${fileName}.enc`,
       startIn: "downloads",
     });
 

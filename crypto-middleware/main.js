@@ -22,18 +22,56 @@ It is important to keep the buffersize the same for both encryption and decrypti
 
 let bufferSize = 5 * 1024 * 1024 // 5MB buffer size
 
-async function startStreaming(file, passPhrase) {
-try {
-    const fileStream = await readFileChunk(file);
-    const encryptionStream = await encryptStream(passPhrase);
-    const encryptedStream = await fileStream.pipeThrough(encryptionStream)
 
-    return encryptedStream
-} catch (e){
-    console.log('An error occurred during streaming encryption:', e)
-    throw e
+async function startStreaming(file, passPhrase, gzip = 0) {
+    try {
+        const fileStream = await readFileChunk(file);
+        const gzipStream = gzip && await startGzipStreaming(fileStream)
+        console.log('gzipstream', gzipStream)
+
+        let resultStream = fileStream;
+        if (gzipStream) {
+            resultStream = resultStream.pipeThrough(gzipStream);
+            console.log('resultstream', resultStream)
+        }
+        const encryptionStream = await encryptStream(passPhrase);
+
+
+        const encryptedStream = resultStream.pipeThrough(encryptionStream);
+
+
+        return encryptedStream
+    } catch (e) {
+        console.log('An error occurred during streaming encryption:', e)
+        throw e
+    }
 }
+
+
+
+// async function startStreaming(file, passPhrase, gzip = 1) {
+//     try {
+//         const fileStream = await readFileChunk(file);
+//         const gzipStream = gzip && await startGzipStreaming()
+//         const zippedStream = fileStream.pipeThrough(gzipStream);
+
+        
+
+//         return zippedStream
+//     } catch (e) {
+//         console.log('An error occurred:', e.message)
+//         throw e
+//     }
+// }
+
+async function startGzipStreaming() {
+    try {
+     return new CompressionStream('gzip');
+    } catch (e) {
+        throw new Error('Failed to compress file: ' + e.message)
+    }
 }
+
 
 
 /**
@@ -53,7 +91,12 @@ try {
  * This is the first part of the startStreaming pipeline 
  */
 async function readFileChunk(file) {
-    return file.stream()
+    try {
+        return file.stream()
+    } catch (e) {
+        throw new Error('Failed to read file: ' + e.message)
+
+    }
 }
 
 
@@ -100,7 +143,7 @@ async function encryptStream(passphrase) {
                     // An initialization vector (IV) is used for AES-GCM to ensure that different encryption results are obtained even for the same plaintext and key.
                     // The `key` is a CryptoKey object representing the AES key to be used for encryption.
                     // `dataToEncrypt` is the data to be encrypted, which should be an ArrayBuffer or ArrayBufferView.
-                    
+
                     const encryptedFile = await crypto.subtle.encrypt(
                         {
                             name: 'AES-GCM',
@@ -123,11 +166,11 @@ async function encryptStream(passphrase) {
             }
         },
 
-/**
- * The FlushHandles any remaining data in the buffer when there is no more data to be consumed from the stream.
- * If there is data left in the buffer, it generates a new initialization vector (IV), 
- * creates a subarray from the buffer containing the remaining data, and encrypts this data using the AES-GCM algorithm.
- */
+        /**
+         * The FlushHandles any remaining data in the buffer when there is no more data to be consumed from the stream.
+         * If there is data left in the buffer, it generates a new initialization vector (IV), 
+         * creates a subarray from the buffer containing the remaining data, and encrypts this data using the AES-GCM algorithm.
+         */
         async flush(controller) {
 
             if (this.bufferLength > 0) {
@@ -228,7 +271,7 @@ async function encryptFile(file, passphrase) {
 
     const key = await deriveKey(passphrase)
     const iv = generateIV();
-    let fileBuffer = await file.arrayBuffer(); 
+    let fileBuffer = await file.arrayBuffer();
     // this reads the whole file at once, this is not ideal for large files
     const encryptedFile = await crypto.subtle.encrypt(
         {
@@ -265,9 +308,9 @@ async function encryptFile(file, passphrase) {
 async function decryptFile(file, passphrase) {
     try {
         const fileBuffer = await file.arrayBuffer();
-  
+
         const key = await deriveKey(passphrase)
-     
+
         const decryptedFile = await crypto.subtle.decrypt(
             {
                 name: 'AES-GCM',
@@ -326,12 +369,12 @@ function decryptStream(privateKeyOrPassphrase) {
         let key
         return new TransformStream({
             async start() {
-           
+
                 if (typeof privateKeyOrPassphrase === 'string') {
                     key = await deriveKey(privateKeyOrPassphrase);
                 } else {
-               
-           
+
+
                     const privateKey = await privateKeyOrPassphrase.text();
                     key = await decryptPassPhraseWithPrivateKey
                 }
@@ -388,7 +431,7 @@ function decryptStream(privateKeyOrPassphrase) {
 
 
                     const { iv, encryptedData } = extractMeta(dataToDecrypt)
-     
+
                     try {
                         const decryptedChunk = await crypto.subtle.decrypt(
                             {
@@ -612,7 +655,7 @@ async function importPrivateKey(jwk) {
  * const publicKey = await importPublicKey(jwkString);
  */
 async function importPublicKey(jwk) {
-  
+
     if (typeof jwk === 'string') {
         jwk = JSON.parse(jwk)
     }
@@ -662,4 +705,4 @@ async function generateKeyPair() {
 }
 
 
-export { decryptPassPhraseWithPrivateKey, generateKeyPair, importPublicKey, encryptPassPhraseWithPublicKey, deriveKey, encryptFile, decryptFile, generateIV, decryptStream, readFileChunk, startStreaming, encryptStream }
+export { startGzipStreaming,decryptPassPhraseWithPrivateKey, generateKeyPair, importPublicKey, encryptPassPhraseWithPublicKey, deriveKey, encryptFile, decryptFile, generateIV, decryptStream, readFileChunk, startStreaming, encryptStream }
