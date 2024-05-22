@@ -12,5 +12,10 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
+  },
+  build: {
+    // Disable size reports
+    reportCompressedSize: false,
+    chunkSizeWarningLimit : 3500
   }
 })

@@ -7,7 +7,7 @@ export const useStore = defineStore("store", {
             isSettings : true,
             passphrase : '',
             testResults : [],
-            isCloud : true,
+            isCloud : false,
          
           
         

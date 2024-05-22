@@ -27,7 +27,6 @@ async function startStreaming(file, passPhrase, gzip = 0) {
     try {
         const fileStream = await readFileChunk(file);
         const gzipStream = gzip && await startGzipStreaming(fileStream)
-        console.log('gzipstream', gzipStream)
 
         let resultStream = fileStream;
         if (gzipStream) {
@@ -553,7 +552,7 @@ async function encryptPassPhraseWithPublicKey(publicKey, data) {
 
     const encryptedData = await window.crypto.subtle.encrypt(
         {
-            name: "RSA-OAEP"
+            name: "c"
         },
         publicKey,
         encodedData
