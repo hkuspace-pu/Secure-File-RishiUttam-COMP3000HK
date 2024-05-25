@@ -49,6 +49,13 @@
           </FloatLabel>
 
           <div class="submenu">
+            <!-- <button
+              :disabled="!fileInput?.files[0]"
+              @click="bigEncryptFn('WebCrypto')"
+              id="encryptButton"
+            >
+              Native Web Crypto
+            </button> -->
             <button
               :disabled="!fileInput?.files[0]"
               @click="uploadOnly"
@@ -189,9 +196,7 @@
     </div>
 
     <div class="boxContainer two">
-      <!-- <a ref="downloadLink" id="downloadLink" style="display: none"
-        >Download file</a
-      > -->
+   
 
       <div class="box">
        
@@ -356,16 +361,18 @@ const bigEncryptFn = async (type)=> {
   const startTime = performance.now()
 
   const encrypted = await utils[type](file)
+ 
 
 if (store.isCloud) {
    await uploadS3(fileName, totalBytes, encrypted, type);
+  
 } else {
     
     returnedData = await downloadToDisk(fileName, totalBytes, encrypted, type)
 }
 returnMaxMem()
-await nextTick()
 const endTime = performance.now();
+
 clearInterval(checkMem);
 console.log('Returned Data:', returnedData)
 
@@ -373,9 +380,34 @@ const duration = returnedData || parseFloat((endTime - startTime).toFixed(2));
 console.log(`${type} took ${duration} ms.`);
 const maxMemory = Math.max(...usageHighMem.value) - currentMemory;
 console.log(`${type} Memory: ${maxMemory}`)
+
+if (timers.value[0].data.length >=4) {
+timers.value[0].data.shift()
+timers.value[1].data.shift()
+let currentTypes = mixedChartRef.value.options.xaxis.categories;
+    currentTypes.shift()
+    mixedChartRef.value.updateOptions({
+      xaxis: {
+        categories: currentTypes,
+      },
+    });
+
+}
 timers.value[0].data.push(duration);
 timers.value[1].data.push(maxMemory);
+
+
+
 usageHighMem.value = [];
+
+let currentTypes = mixedChartRef.value.options.xaxis.categories;
+    currentTypes.push(type);
+    mixedChartRef.value.updateOptions({
+      xaxis: {
+        categories: currentTypes,
+      },
+    });
+
 
 addRunData(type, totalBytes, maxMemory, duration);
   }catch(e) {
@@ -383,7 +415,7 @@ addRunData(type, totalBytes, maxMemory, duration);
     toast.add({
       severity: "error",
       summary: "Failed",
-      detail: `OpenPGP Buffer Error- ${e}`,
+      detail: `${type} Error- ${e}`,
       life: 4000,
     });
   } finally {
@@ -686,7 +718,7 @@ onMounted(async () => {
   setInterval(updateMemoryInfo, 1000); // Update every second
     //  const worker = new Worker(new URL('./workers/checkMem.js', import.meta.url))
   //  const mem = await performance.measureUserAgentSpecificMemory()
- 
+  // window.addEventListener('encryptionComplete', handleEncryptionComplete);
 
 });
 
@@ -963,8 +995,11 @@ const downloadToDisk =  async (fileName, totalBytes, obj, type) => {
   try {
 console.log('Dl Direct to Disk')
 
+
     function isStream(obj) {
+
   return obj instanceof ReadableStream || obj instanceof WritableStream || (obj && obj.readable instanceof ReadableStream && obj.writable instanceof WritableStream);
+
 }
   
 console.log('Is Stream?',isStream(obj))
@@ -978,20 +1013,23 @@ if (!isStream(obj)) {
   URL.revokeObjectURL(link.href);
   
 } else {
-  console.log('This is a streaming dl')
+  
   usageHighMem.value = [];
-  const fileHandle = await window.showSaveFilePicker({
+
+    const fileHandle = await window.showSaveFilePicker({
       suggestedName: `${type}-${fileName}.enc`,
       startIn: "downloads",
     });
 
+ 
+
     const writable = await fileHandle.createWritable();
-    
+   
     console.log('Now Getting time for stream')
     const startTime = performance.now()
-
 //Build up the progress passthrough stream
 let downloadedSize = 0;
+
     const progressStream = new TransformStream({
       transform(chunk, controller) {
     
@@ -1004,17 +1042,15 @@ let downloadedSize = 0;
         radialSeries.value[0] = awsProgress.value;
         controller.enqueue(chunk);
       },
+     
     });
 
 
-
-
-    //Starts the stream
     await obj.pipeThrough(progressStream).pipeTo(writable);
-
     const endTime = performance.now();
     const duration = parseFloat((endTime - startTime).toFixed(2));
     return duration
+   
 
 }
   
@@ -1046,9 +1082,13 @@ const checkDisabledDecrypt = computed(() => {
 
 async function addRunData(type, totalBytes, memory, duration) {
 
+  // const bytesToMegabytes = 1024 * 1024;
+  // const millisecondsToSeconds = 1000;
+
   testResults.value.push({
     software: type,
     fileSize: totalBytes,
+    throughput : (totalBytes / 1024 / 1024 / duration * 1000).toFixed(2),
     memory: memory,
     duration: duration,
   });
@@ -1139,6 +1179,7 @@ html body {
   /* flex:1; */
   flex-shrink: 0;
   height: 550px;
+  /* width: 100%; */
   /* overflow:scroll; */
   /* border:2px solid green; */
   flex-direction: row;
@@ -1159,26 +1200,14 @@ html body {
   /* width: 100%; */
 }
 .box {
-  /* border: 1px solid red; */
   padding: 12px;
-  /* margin:auto; */
   border-radius: 5px;
   display: flex;
-  /* justify-content:space-evenly; */
-  gap: 5px;
-  /* width: 100%; */
-  /* height:100%; */
+gap: 5px;
  width: 650px;
-
-/* height: 800px; */
-  /* height: fit-content; */
   flex-direction: column;
-  /* align-items:center; */
-  /* border:1px solid red; */
   border: 1px solid rgb(230, 230, 230);
   box-shadow: 0px 10px 15px -3px rgba(0, 0, 0, 0.1);
-  /* height: 400px; */
-
 }
 
 .radial {

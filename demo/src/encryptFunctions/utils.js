@@ -27,6 +27,12 @@ const utils = {
       }
 
     },
+    async WebCrypto(file) {
+       console.log('Running webcrypto basic')
+      const encrypted = await secure.encryptFile(file, passphrase.value);
+      return encrypted
+    
+  },
     async SecureSend(file) {
  
         const stream = await secure.startStreaming(file, passphrase.value);

@@ -63,6 +63,7 @@ export const useStore = defineStore("store", {
               // Sort group data for quartile calculations
               const sortedDurationData = group.map(item => item.duration).sort((a, b) => a - b);
               const sortedMemoryData = group.map(item => item.memory).sort((a, b) => a - b);
+              const sortedThroughputData= group.map(item => item.throughput).sort((a, b) => a - b);
           
               stats[key] = {
                 duration: {
@@ -78,6 +79,13 @@ export const useStore = defineStore("store", {
                   median: sortedMemoryData[Math.floor(sortedMemoryData.length / 2)],
                   q3: sortedMemoryData[Math.floor(3 * sortedMemoryData.length / 4)],
                   max: sortedMemoryData[sortedMemoryData.length - 1],
+                },
+                throughput: {
+                  min: sortedThroughputData[0],
+                  q1: sortedThroughputData[Math.floor(sortedThroughputData.length / 4)],
+                  median: sortedThroughputData[Math.floor(sortedThroughputData.length / 2)],
+                  q3: sortedThroughputData[Math.floor(3 * sortedThroughputData.length / 4)],
+                  max: sortedThroughputData[sortedThroughputData.length - 1],
                 },
               };
             }
@@ -102,7 +110,7 @@ export const useStore = defineStore("store", {
                 y: [group.duration.min, group.duration.q1, group.duration.median, group.duration.q3, group.duration.max],
               });
             }
-        
+            window.dispatchEvent(new Event('resize'))
             return series;
            
           },
@@ -195,38 +203,13 @@ export const useStore = defineStore("store", {
         
             return statsWithStdDev;
           },      speed() {
-            function calculateSpeed(bytes, durationInMilliseconds) {
-              const bytesToMB = bytes * 1.0E-6;
-              const durationInSeconds = durationInMilliseconds / 1000;
-              return bytesToMB / durationInSeconds;
-            }
-            const avgSpeed = []
-  
-          for (const key in this.stats) {
-    const group = this.stats[key];
-    const totalBytes = Number(key.split(':')[1]);
-    const speed = calculateSpeed(totalBytes, group.duration.median);
-  
-    avgSpeed.push({
-      name: key,
-      data: [speed],
-    });
-    
-  }
-          
-  // this.speedChartOptions.xaxis.cate gories = key.split(':')[0]
-  
-            return avgSpeed;
+        
   
           },
           
 
            speedLabels() {
-            const labels = [];
-            for (const key in this.stats) {
-              labels.push(key.split(':')[0]);
-            }
-            return labels;
+          
           },
 
 
