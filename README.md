@@ -1,7 +1,3 @@
----
-description: A COMP3000HK CYBER SECRUITY PROJECT
----
-<figure><img src=".gitbook/assets/image.png" alt=""><figcaption><p>This is a typical file upload component that integrates the crypto-middleware module.</p></figcaption></figure>
 
 # Client-Side Encryption: The Key to Confidentiality for Cloud Storage
 
