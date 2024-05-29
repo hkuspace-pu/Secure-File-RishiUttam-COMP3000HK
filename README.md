@@ -22,6 +22,11 @@ The end result is End-to-End encryption for your sensitive data.
 
 Cloud breaches have exposed millions of plaintext data across industries, with inherent risks in relying on cloud infrastructure for data security. SecureFile demonstrates this by using our opensource  browser middleware acting as a secure proxy to read, encrypting and save data before it leaves the client's environment, ensuring cloud providers only handle encrypted data without access to decryption keys.
 
+## Middlware installation
+
+Install the middleware only
+DOCS : https://www.npmjs.com/package/crypto-middleware 
+
 ## Package Contents
 
 <table data-full-width="true"><thead><tr><th>Title</th><th>Location</th><th>Description</th><th>Usage</th></tr></thead><tbody><tr><td>Crypto-Middleware</td><td>./crypto-middleware</td><td>Middleware proxies your File object in a stream and outputs a encrypted Readable stream.</td><td><code>npm i crypto-middleware</code></td></tr><tr><td>SecureFile</td><td>./demo</td><td>Client side application demonstrating ways in which Crypto-middleware can be sued with comparison and monitoring included.</td><td><code>cd demo</code><br><code>npm install</code><br><code>npm run dev</code></td></tr><tr><td></td><td></td><td></td><td></td></tr><tr><td>Crypto-CLI</td><td>./crypto-cli</td><td>NodeJS terminal proof of concept wrapper around openssl.</td><td><code>node index</code></td></tr></tbody></table>
