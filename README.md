@@ -1,6 +1,12 @@
 ---
 description: A COMP3000HK CYBER SECRUITY PROJECT
+cover: >-
+  https://images.unsplash.com/photo-1618060932014-4deda4932554?crop=entropy&cs=srgb&fm=jpg&ixid=M3wxOTcwMjR8MHwxfHNlYXJjaHw3fHxoYWNraW5nfGVufDB8fHx8MTcxNjk4MzA1OXww&ixlib=rb-4.0.3&q=85
+coverY: 0
 layout:
+  cover:
+    visible: true
+    size: hero
   title:
     visible: true
   description:
@@ -19,7 +25,7 @@ Client-Side Encryption: The Key to Confidentiality for Cloud Storage
 
 ### About this project
 
-This project aims to demonstrate how businesses can maintain data privacy controls for data in the Cloud through self-managed encryption keys . Our open-source Crypto-Middleware package integrates as a proxy before you send data to the cloud, for now we support AWS S3, or your local disk.&#x20;
+This project aims to demonstrate how businesses can maintain data privacy controls for data in the Cloud through self-managed encryption keys . Our open-source Crypto-Middleware package is based on the Web Cryptography API, designed for web applications  who require encrypting files on your device before transmission.
 
 The end result is End-to-End encryption for your sensitive data.
 
@@ -30,7 +36,7 @@ The end result is End-to-End encryption for your sensitive data.
 * High Entropy
 * Browser only,  no server side encryption.
 * Large file encryption & decryption without exhausting memory > 5GB
-* Optional PKI to share keys
+* Optional Public Key Encryption to share your secret keys
 
 ## Motives
 
