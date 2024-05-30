@@ -1,8 +1,19 @@
 #!/usr/bin/env node
 
-import { program } from "commander";//taking command line args
+/**
+ * AUTHOR: Rishi Uttam FINAL YEAR PROJECT
+ * @fileoverview This file contains the main logic for a secure file encryption CLI tool.
+ * It uses various cryptographic algorithms to encrypt and decrypt files.
+ * The user is prompted to select the file, encryption algorithm, and other options.
+ * The selected file is then encrypted or decrypted based on the user's choice.
+ * The encrypted file is saved with a .enc extension.
+ * The tool also supports file compression before encryption.
+ * The progress of the encryption process is displayed using a progress bar.
+ * The tool uses various external libraries such as chalk, inquirer, figlet, fs, crypto, url, @clack/prompts, picocolors, stream, util, zlib, and cli-progress.
+ */
+
 import chalk from "chalk"; //for colors
-import inquirer from "inquirer"; `` //asking questions
+import inquirer from "inquirer"; //asking questions
 import inquirerFileTreeSelection from 'inquirer-file-tree-selection-prompt'
 import figlet from "figlet";
 import * as fs from 'fs';
@@ -11,7 +22,6 @@ import * as crypto from 'crypto';
 import * as url from 'node:url';
 import * as p from '@clack/prompts'
 import color from 'picocolors';
-import { Performance } from "perf_hooks";
 import { pipeline, Stream, Transform } from 'stream';
 import { promisify } from 'util';
 import zlib from 'zlib';
@@ -20,13 +30,7 @@ import prettyBytes from "pretty-bytes";
 
 const __filename = url.fileURLToPath(import.meta.url);
 inquirer.registerPrompt('file-tree-selection', inquirerFileTreeSelection)
-
-
-
-
-// let key = Buffer.from('81ad9de199b2af85dbc13cf3a88e5c8cec4c80b5b19c28dff0a65525293eede5', 'hex')
-// let ivs = Buffer.from('dbb849b69186c8e1245f8306cdf0fe90', 'hex')
-
+let maxHeapUsed = 0;
 let key
 let iv
 let totalSize = 0
@@ -40,38 +44,30 @@ let bar = new progress.SingleBar({
   hideCursor: true
 }, progress.Presets.shades_classic);
 
-// let bar2 = new progress.SingleBar({
-//   format: 'Progress|' + chalk.blue('{bar}') + `| {percentage}% || {value}/{total} Bytes || Chunks: {currentChunk}/{totalChunks}`,
-//   barCompleteChar: '\u2588',
-//   barIncompleteChar: '\u2591',
-//   hideCursor: true
-// }, progress.Presets.shades_classic);
-
-
+/**
+ * Prints the project name in ASCII art.
+ */
 console.log(
   chalk.yellow(figlet.textSync("Rishi Final Year Project", { horizontalLayout: "full" }))
 );
 
+/**
+ * The main function that runs the encryption/decryption process.
+ */
 async function run() {
-
   console.clear();
   p.intro(`${color.bgCyan(color.black('Secure File Encryption - Author Rishi Uttam: v0.1'))}`);
 
   const availableCiphers = crypto.getCiphers();
 
-
   const group = await p.group(
     {
-
-
-
       encryptDecrypt: ({ results }) =>
         p.select({
           message: `Would you like to encrypt or decrypt?`,
           options: [
             { value: 1, label: 'Encrypt' },
             { value: 0, label: 'Decrypt' },
-
           ],
         }),
       selectFile: ({ results }) => {
@@ -85,50 +81,10 @@ async function run() {
         p.select({
           message: `Which Cipher would you like to use?`,
           options: [
-            // ...cipherOptions
-            { value: "AES", label: 'AES', hint: 'Advanced encryption standard used worldwide' },
-            { value: "ARIA", label: 'Aria', hint: 'Block cipher with high security level' },
-            { value: "BLOWFISH", label: 'BlowFish', hint: 'Popular symmetric key encryption algorithm' },
+            { value: "AES-256-GCM", label: 'AES-256-GCM', hint: 'Advanced encryption standard used worldwide' },
             { value: "ChaCha20", label: 'ChaCha20', hint: 'Stream cipher known for its speed.' },
-            { value: "3DES", label: '3DES', hint: 'Data Encryption Standard for enhanced security.' },
-            { value: "Camellia", label: 'Camellia', hint: 'Symmetric encryption algorithm with strong performance' },
-            { value: "SM4", label: 'SM4', hint: 'Chinese encryption standard used in various applications' },
-
           ],
         }),
-
-      // const data = JSON.parse(results)
-      // console.log(data.results.selectFile)
-      //   const s = p.spinner()
-      //   s.start("Working...")
-      //   const start = performance.now();
-      // const check = await encryptFile(results.selectFile,keys,ivs)
-      // const end = performance.now()
-      // console.log(`Time taken to execute add function is ${end - start}ms.`);
-      //   s.stop("Done!")
-
-      selectBitRate: () =>
-        p.select({
-          message: `Select Bit Rate`,
-          options: [
-            { value: 128, label: '128' },
-            { value: 192, label: '192' },
-            { value: 256, label: '256' },
-          ],
-        }),
-      selectMode: () =>
-        p.select({
-          message: 'Select Mode of Operation',
-          options: [
-            { value: 'CBC', label: 'CBC', hint: 'Cipher Block Chaining' },
-            { value: 'CFB', label: 'CFB', hint: 'Cipher Feedback' },
-            { value: 'OFB', label: 'OFB', hint: 'Output Feedback' },
-            { value: 'CTR', label: 'CTR', hint: 'Counter Mode' },
-            { value: 'GCM', label: 'GCM', hint: 'Galois/Counter Mode' },
-            { value: 'CCM', label: 'CCM', hint: 'Counter with CBC-MAC' },
-          ]
-        }),
-
       BackpressureBufferSize: () =>
         p.select({
           message: 'Select Backpressure Buffer Size',
@@ -138,28 +94,24 @@ async function run() {
             { value: 64 * 1024, label: '64KB' },
             { value: 128 * 1024, label: '128KB' },
             { value: 256 * 1024, label: '256KB' },
+            { value: 512 * 1024, label: '256KB' },
+            { value: 1 * 1024 * 1024, label: '1MB' },
+            { value: 2 * 1024 * 1024, label: '2MB' },
+            { value: 3 * 1024 * 1024, label: '3MB' },
+            { value: 4 * 1024 * 1024, label: '4MB' },
+            { value: 5 * 1024 * 1024, label: '4MB' },
           ],
         }),
       compressOption: () =>
         p.confirm({
           message: 'Would you like to compress the file before encryption?',
         }),
-
       confirm: ({ results }) => {
         console.table(results)
         return p.confirm({
           message: 'Are you sure you want to proceed?',
         });
-
       },
-
-
-
-
-
-
-      // On Cancel callback that wraps the group
-      // So if the user cancels one of the prompts in the group this function will be called
     },
     {
       onCancel: ({ results }) => {
@@ -169,31 +121,24 @@ async function run() {
     }
   );
 
-
-
   if (group.confirm) {
     const s = p.spinner()
-    // s.start('Working...');
     try {
-
       const start = performance.now();
-
       await encryptFile(group)
       const end = performance.now()
       console.log(`Time taken encrypt ${(end - start).toFixed(3)}ms.`);
-      // s.stop('Done!')
     } catch (e) {
       console.log('Error:', e.code)
       s.stop('Failed!')
     }
   }
-
-
-
-
 }
 
-
+/**
+ * Prompts the user to select a file to encrypt.
+ * @returns {string} The path of the selected file.
+ */
 async function selectFile() {
   const fileName = await inquirer
     .prompt([
@@ -201,7 +146,6 @@ async function selectFile() {
         type: 'file-tree-selection',
         name: 'file',
         enableGoUpperDirectory: true,
-        // default: __filename,
         message: 'Select File to Encrypt:',
         transformer: (input) => {
           const name = input.split(path.sep).pop();
@@ -210,11 +154,8 @@ async function selectFile() {
           }
           return name;
         }
-
       }
     ])
-
-  // console.log(JSON.stringify(`Selected: ${fileName.file}`))
   return fileName.file
 }
 
@@ -223,13 +164,11 @@ run()
     console.log('Error:', error.message)
   })
 
-
-
-
-
-
+/**
+ * Encrypts the selected file using the provided options.
+ * @param {object} group - The options selected by the user.
+ */
 async function encryptFile(group) {
-
   if (group.selectBitRate == 128) {
     key = crypto.randomBytes(16)
   } else if (group.selectBitRate == 192) {
@@ -239,33 +178,23 @@ async function encryptFile(group) {
   }
   iv = crypto.randomBytes(16);
   const readStream = fs.createReadStream(group.selectFile, { highWaterMark: group.BackpressureBufferSize })
-  cipherAlgorithm = `${group.startEncrypt}-${group.selectBitRate}-${group.selectMode}`.toLowerCase()
+  cipherAlgorithm = `${group.startEncrypt}`.toLowerCase()
   console.log('Using : ', cipherAlgorithm)
   console.log(`\nReading => ${group.compressOption ? 'Compression => ' : ''}Encryption => Writing`)
   const cipher = crypto.createCipheriv(cipherAlgorithm, key, iv);
-  const writeStream = fs.createWriteStream(path.join(path.dirname(group.selectFile), group.compressOption ? path.basename(group.selectFile)+'.enc.gz' : path.basename(group.selectFile)+'.enc' ), { highWaterMark: 64 * 1024 });
-
-
+  const writeStream = fs.createWriteStream(path.join(path.dirname(group.selectFile), group.compressOption ? path.basename(group.selectFile) + '.enc.gz' : path.basename(group.selectFile) + '.enc'), { highWaterMark: 64 * 1024 });
 
   let writeSize = 0;
-  totalSize = fs.statSync(group.selectFile).size; 
+  totalSize = fs.statSync(group.selectFile).size;
   const pipelineAsync = promisify(pipeline);
   const progress = passThroughStream();
   const streams = [readStream, cipher, progress, writeStream,]
   if (group.compressOption) {
-
-    // totalSize = fs.statSync(group.selectFile).size;
     const gzip = zlib.createGzip();
-
-
-  
     streams.splice(1, 0, gzip);  // Insert gzip at index 1
   }
   try {
-    //Concurrently reading, compressing, encrypting and writing to file.
-    // bar.start(totalSize, 0);
-
-
+  
     totalChunks = Math.ceil(totalSize / group.BackpressureBufferSize)
     let currentChunk = 0;
     bar.start(totalSize, 0)
@@ -273,38 +202,40 @@ async function encryptFile(group) {
       totalBytes += chunk.length;
       currentChunk++
       let message = `Encrypting ${prettyBytes(chunk.length)}`
-      // bar.update(totalBytes, { currentChunk, totalChunks });
-      bar.update(totalBytes, group.compressOption ? { currentChunk, currentChunk,message } : { currentChunk, totalChunks,message });
+      bar.update(totalBytes, group.compressOption ? { currentChunk, currentChunk, message } : { currentChunk, totalChunks, message });
+      const used = process.memoryUsage();
+      
+      maxHeapUsed = Math.max(maxHeapUsed, used.heapUsed);
     })
 
     writeStream.on('close', () => {
-      console.log('\nWrite Stream Closed')
-      const fileLocation = path.join(path.dirname(group.selectFile), group.compressOption ? path.basename(group.selectFile)+'.enc.gz' : path.basename(group.selectFile)+'.enc')
+      const fileLocation = path.join(path.dirname(group.selectFile), group.compressOption ? path.basename(group.selectFile) + '.enc.gz' : path.basename(group.selectFile) + '.enc')
       console.log('File Location', fileLocation)
       fs.appendFileSync(fileLocation, addMetaData());
-    
     })
     writeStream.on('finish', () => {
       bar.update(totalSize)
-    
       bar.stop();
+      console.log(`Maximum memory used during operation = ${Math.round((maxHeapUsed / 1024 / 1024) * 100) / 100} MB`);
     })
+
     await pipelineAsync(...streams)
-     console.log('\nPipeline finished')
-     let log = logCompressionStats(totalSize,totalBytes)
-     log.savingsBytes = prettyBytes(log.savingsBytes)
-     log.savingsPct = `${log.savingsPct}%`
+
+    console.log('\nPipeline finished')
+
+    let log = logCompressionStats(totalSize, totalBytes)
+    log.savingsBytes = prettyBytes(log.savingsBytes)
+    log.savingsPct = `${log.savingsPct}%`
     console.table(log)
   } catch (e) {
     console.log('Error:Pipeline Failed', e)
-  } finally {
-
   }
-
-
 }
 
-// create a function that adds the meta data such as the algo used, iv, to the start of the encrypted file.
+/**
+ * Adds metadata such as the encryption algorithm and IV to the start of the encrypted file.
+ * @returns {string} The metadata in JSON format.
+ */
 function addMetaData() {
   let metaData = {
     algorithm: cipherAlgorithm,
@@ -312,36 +243,49 @@ function addMetaData() {
     timestamp: new Date().toISOString()
   }
   return JSON.stringify(metaData);
-
- r
 }
 
-
-// encryptFile(filePath, key,iv);
-
-
-//PASS THROUGH STREAM
+/**
+ * Creates a pass-through stream for progress tracking.
+ * @returns {Transform} The pass-through stream.
+ */
 function passThroughStream() {
   let progress = new Transform({
     transform(chunk, encoding, callback) {
       callback(null, chunk);
     }
   });
- progress.on('finish', () => {
-  const metaData = addMetaData()
- })
+  progress.on('finish', () => {
+    const metaData = addMetaData()
+  })
   return progress;
 }
 
-function logCompressionStats(originalSize,compressedSize) {
+/**
+ * Calculates and logs compression statistics.
+ * @param {number} originalSize - The original size of the file.
+ * @param {number} compressedSize - The compressed size of the file.
+ * @returns {object} The compression statistics.
+ */
+function logCompressionStats(originalSize, compressedSize) {
   const ratio = compressedSize / originalSize;
   const savingsBytes = originalSize - compressedSize;
-  const savingsPct = Math.round((savingsBytes / originalSize) * 100);
-  return {savingsBytes,savingsPct}
+  const savingsPct = ((1 - ratio) * 100).toFixed(2);
+  return {
+    MaxMemoryUsed: `${Math.round((maxHeapUsed / 1024 / 1024) * 100) / 100} MB`,
+    originalSize: prettyBytes(originalSize),
+    compressedSize: prettyBytes(compressedSize),
+    compressionRatio: ratio.toFixed(2),
+    savingsBytes,
+    savingsPct,
+  };
 }
+  // const savingsPct = Math.round((savingsBytes / originalSize) * 100);
+  // return { savingsBytes, savingsPct }
+
 
 function decryptFile(key, iv) {
-  console.log('CALLING DECRUPT')
+  console.log('CALLING DECRYPT')
   console.log('Encryption Key:', key);
   console.log('Encryption IV:', iv);
   let encryptedFilePath = `../encrypted_test.mov`
@@ -377,36 +321,6 @@ function decryptFile(key, iv) {
 
 }
 
-// decryptFile(key,iv);
-
-
-// Encryption and decryption functions using the crypto module
-// function encrypt(buffer) {
-//  const cipher = crypto.createCipheriv('aes-256-cbc', key,iv);
-//   encrypted = Buffer.concat([encrypted, cipher.final()]);
-//   return encrypted;
-// }
-
-// function decrypt(encrypted) {
-//   const decipher = crypto.createDecipheriv(algorithm, Buffer.from(key), iv);
-//   let decrypted = decipher.update(encrypted);
-//   decrypted = Buffer.concat([decrypted, decipher.final()]);
-//   return decrypted;
-// }
-
-
-
-// async function encryptDecrypt() {
-//   try {
-//     const data  = await fs.readFile(filePath)
-//     const cipher = crypto.createCipheriv('aes-256-cbc', key,iv);
-//     const encryptedData =
-
-//   } catch(e) {
-//     console.log('In catch')
-
-//   }
-// }
 
 
 

@@ -1,10 +1,11 @@
 {
   "name": "crypto-middleware",
-  "version": "1.2.0",
+  "version": "1.2.3",
   "description": "A browser middleware for handling client side encryption prior to uploading to the cloud",
+  "type": "module",
   "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest --coverage",
     "docs": "jsdoc2md main.js > README.md"
   },
   "repository": {
@@ -23,5 +24,12 @@
   "bugs": {
     "url": "https://github.com/hkuspace-pu/Secure-File-RishiUttam-COMP3000HK/issues"
   },
-  "homepage": "https://github.com/hkuspace-pu/Secure-File-RishiUttam-COMP3000HK#readme"
+  "homepage": "https://github.com/hkuspace-pu/Secure-File-RishiUttam-COMP3000HK#readme",
+  "devDependencies": {
+    "@vitest/browser": "^1.6.0",
+    "@vitest/coverage-istanbul": "^1.6.0",
+    "@vitest/ui": "^1.6.0",
+    "vitest": "^1.6.0",
+    "webdriverio": "^8.38.0"
+  }
 }
