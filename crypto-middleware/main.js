@@ -21,56 +21,19 @@ It is important to keep the buffersize the same for both encryption and decrypti
 */
 
 let bufferSize = 5 * 1024 * 1024 // 5MB buffer size
+let memoryUsage = []
 
-
-async function startStreaming(file, passPhrase, gzip = 0) {
-    try {
-        const fileStream = await readFileChunk(file);
-        const gzipStream = gzip && await startGzipStreaming(fileStream)
-
-        let resultStream = fileStream;
-        if (gzipStream) {
-            resultStream = resultStream.pipeThrough(gzipStream);
-            console.log('resultstream', resultStream)
-        }
-        const encryptionStream = await encryptStream(passPhrase);
-
-
-        const encryptedStream = resultStream.pipeThrough(encryptionStream);
-
-
-        return encryptedStream
-    } catch (e) {
-        console.log('An error occurred during streaming encryption:', e)
-        throw e
-    }
+async function startStreaming(file, passPhrase) {
+try {
+    const fileStream = await readFileChunk(file);
+    const encryptionStream = await encryptStream(passPhrase);
+    const encryptedStream = await fileStream.pipeThrough(encryptionStream)
+    return encryptedStream
+} catch (e){
+    console.log('An error occurred during streaming encryption:', e)
+    throw e
 }
-
-
-
-// async function startStreaming(file, passPhrase, gzip = 1) {
-//     try {
-//         const fileStream = await readFileChunk(file);
-//         const gzipStream = gzip && await startGzipStreaming()
-//         const zippedStream = fileStream.pipeThrough(gzipStream);
-
-        
-
-//         return zippedStream
-//     } catch (e) {
-//         console.log('An error occurred:', e.message)
-//         throw e
-//     }
-// }
-
-async function startGzipStreaming() {
-    try {
-     return new CompressionStream('gzip');
-    } catch (e) {
-        throw new Error('Failed to compress file: ' + e.message)
-    }
 }
-
 
 
 /**
@@ -90,15 +53,13 @@ async function startGzipStreaming() {
  * This is the first part of the startStreaming pipeline 
  */
 async function readFileChunk(file) {
-    try {
-        return file.stream()
-    } catch (e) {
-        throw new Error('Failed to read file: ' + e.message)
-
-    }
+    return file.stream()
 }
 
 
+function checkMem() {
+    memoryUsage.push(window.performance.memory.usedJSHeapSize);
+}
 
 
 /**
@@ -113,12 +74,17 @@ async function readFileChunk(file) {
  * // Use the encryptedStream with a ReadableStream or WritableStream...
  */
 async function encryptStream(passphrase) {
+    memoryUsage = []
+    const currentMemory = window.performance.memory.usedJSHeapSize;
+    const checkMemInterval = setInterval(checkMem, 500);
+    const startTime = performance.now()
     const key = await deriveKey(passphrase);
     return new TransformStream({
         start() {
             this.buffer = new Uint8Array(bufferSize); // Default is 5MB 
             this.bufferLength = 0;
             this.chunkCount = 0; // Add a counter for the chunks
+            
         },
 
         async transform(chunk, controller) {
@@ -142,7 +108,7 @@ async function encryptStream(passphrase) {
                     // An initialization vector (IV) is used for AES-GCM to ensure that different encryption results are obtained even for the same plaintext and key.
                     // The `key` is a CryptoKey object representing the AES key to be used for encryption.
                     // `dataToEncrypt` is the data to be encrypted, which should be an ArrayBuffer or ArrayBufferView.
-
+            
                     const encryptedFile = await crypto.subtle.encrypt(
                         {
                             name: 'AES-GCM',
@@ -153,10 +119,11 @@ async function encryptStream(passphrase) {
                         dataToEncrypt
 
                     );
+   
                     // Helper function to prepend the IV and encryption algorithm to the encrypted file
                     const metaDataAndEncryption = handleIV(iv, encryptedFile)
                     controller.enqueue(metaDataAndEncryption);
-                    this.buffer = new Uint8Array(bufferSize); // Create a new buffer
+                    // this.buffer = new Uint8Array(bufferSize); // Create a new buffer
                     this.bufferLength = 0;
                     this.chunkCount++;
                 }
@@ -165,11 +132,11 @@ async function encryptStream(passphrase) {
             }
         },
 
-        /**
-         * The FlushHandles any remaining data in the buffer when there is no more data to be consumed from the stream.
-         * If there is data left in the buffer, it generates a new initialization vector (IV), 
-         * creates a subarray from the buffer containing the remaining data, and encrypts this data using the AES-GCM algorithm.
-         */
+/**
+ * The FlushHandles any remaining data in the buffer when there is no more data to be consumed from the stream.
+ * If there is data left in the buffer, it generates a new initialization vector (IV), 
+ * creates a subarray from the buffer containing the remaining data, and encrypts this data using the AES-GCM algorithm.
+ */
         async flush(controller) {
 
             if (this.bufferLength > 0) {
@@ -182,6 +149,7 @@ async function encryptStream(passphrase) {
                     {
                         name: 'AES-GCM',
                         iv: iv
+                    
                     },
                     key,
                     dataToEncrypt
@@ -192,13 +160,33 @@ async function encryptStream(passphrase) {
 
                 const metaDataAndEncryption = handleIV(iv, encryptedFile)
                 controller.enqueue(metaDataAndEncryption);
-                this.buffer = new Uint8Array(bufferSize); // Create a new buffer
+                // this.buffer = new Uint8Array(bufferSize); // Create a new buffer
                 this.bufferLength = 0;
                 this.chunkCount++;
             }
-            // console.log('Total chunks processed:', this.chunkCount); // Log the total number of chunks
-        }
+            console.log('Total chunks processed:', this.chunkCount); // Log the total number of chunks
+            clearInterval(checkMemInterval);
+            const maxMemory = Math.max(...memoryUsage) - currentMemory;
+
+       const endTime = performance.now(); // Stop the timer
+       const duration = parseFloat((endTime - startTime).toFixed(2));
+        console.log(` in main.js encrypt stream Processing took ${endTime - startTime} milliseconds.`);
+        // const event = new CustomEvent('encryptionComplete', {
+        //     detail: {
+        //         processingTime: duration,
+        //         maxMemory : maxMemory
+        //     }
+        // });
+    
+        // // Dispatch the event
+        // window.dispatchEvent(event);    
+    
+    
+    }
     });
+   
+
+
 }
 
 
@@ -267,10 +255,10 @@ function handleIV(iv, encryptedFile) {
  
  */
 async function encryptFile(file, passphrase) {
-
+    const startTime = performance.now()
     const key = await deriveKey(passphrase)
     const iv = generateIV();
-    let fileBuffer = await file.arrayBuffer();
+    let fileBuffer = await file.arrayBuffer(); 
     // this reads the whole file at once, this is not ideal for large files
     const encryptedFile = await crypto.subtle.encrypt(
         {
@@ -282,7 +270,12 @@ async function encryptFile(file, passphrase) {
 
     );
     fileBuffer = null;
-    return new Uint8Array(encryptedFile);
+    const endTime = performance.now(); // Stop the timer
+    const duration = parseFloat((endTime - startTime).toFixed(2));
+     console.log(` WC s: encrypt stream Processing took ${duration} milliseconds.`);
+
+    // return new Uint8Array(encryptedFile);
+      return encryptedFile
 }
 
 
@@ -307,9 +300,9 @@ async function encryptFile(file, passphrase) {
 async function decryptFile(file, passphrase) {
     try {
         const fileBuffer = await file.arrayBuffer();
-
+  
         const key = await deriveKey(passphrase)
-
+     
         const decryptedFile = await crypto.subtle.decrypt(
             {
                 name: 'AES-GCM',
@@ -366,14 +359,15 @@ function extractMeta(encryptedFile) {
 function decryptStream(privateKeyOrPassphrase) {
     try {
         let key
+        console.log('decrypt stream')
         return new TransformStream({
             async start() {
-
+           
                 if (typeof privateKeyOrPassphrase === 'string') {
                     key = await deriveKey(privateKeyOrPassphrase);
                 } else {
-
-
+               
+           
                     const privateKey = await privateKeyOrPassphrase.text();
                     key = await decryptPassPhraseWithPrivateKey
                 }
@@ -430,7 +424,7 @@ function decryptStream(privateKeyOrPassphrase) {
 
 
                     const { iv, encryptedData } = extractMeta(dataToDecrypt)
-
+     
                     try {
                         const decryptedChunk = await crypto.subtle.decrypt(
                             {
@@ -450,7 +444,7 @@ function decryptStream(privateKeyOrPassphrase) {
                     this.chunkCount++;
                 }
 
-                // console.log('Total chunks processed:', this.chunkCount);
+                console.log('Total chunks processed:', this.chunkCount);
             }
         });
     } catch (error) {
@@ -475,7 +469,7 @@ function decryptStream(privateKeyOrPassphrase) {
  */
 async function deriveKey(passPhrase) {
 
-    // const salt = crypto.getRandomValues(new Uint8Array(16));
+    const salt = crypto.getRandomValues(new Uint8Array(16));
     const enc = new TextEncoder()
     // const passphraseInput = document.getElementById('passphrase').value
     const passphraseUint8Array = enc.encode(passPhrase)
@@ -493,7 +487,7 @@ async function deriveKey(passPhrase) {
             name: 'PBKDF2',
             // salt: salt,
             salt: new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-            iterations: 100000,
+            iterations: 4096,
             hash: 'SHA-256'
         },
         baseKey,
@@ -501,10 +495,10 @@ async function deriveKey(passPhrase) {
             name: 'AES-GCM',
             length: 256
         },
-        true,
+        false, // Important make sure the key is non exportable
         ['encrypt', 'decrypt']
     );
-    // console.log(key)
+    console.log(key)
     return key;
 
 }
@@ -552,7 +546,7 @@ async function encryptPassPhraseWithPublicKey(publicKey, data) {
 
     const encryptedData = await window.crypto.subtle.encrypt(
         {
-            name: "c"
+            name: "RSA-OAEP"
         },
         publicKey,
         encodedData
@@ -654,7 +648,7 @@ async function importPrivateKey(jwk) {
  * const publicKey = await importPublicKey(jwkString);
  */
 async function importPublicKey(jwk) {
-
+  
     if (typeof jwk === 'string') {
         jwk = JSON.parse(jwk)
     }
@@ -704,4 +698,4 @@ async function generateKeyPair() {
 }
 
 
-export { startGzipStreaming,decryptPassPhraseWithPrivateKey, generateKeyPair, importPublicKey, encryptPassPhraseWithPublicKey, deriveKey, encryptFile, decryptFile, generateIV, decryptStream, readFileChunk, startStreaming, encryptStream }
+export { decryptPassPhraseWithPrivateKey, generateKeyPair, importPublicKey, encryptPassPhraseWithPublicKey, deriveKey, encryptFile, decryptFile, generateIV, decryptStream, readFileChunk, startStreaming, encryptStream }
