@@ -20,21 +20,21 @@
   <p>Min,Max, Median for all runs (Duration and Memory)</p>
   <DataTable v-for="(value, key) in store.stats" :key="key" :value="[value]">
     {{key}}
-  <!-- <Column field="duration.min" header="Duration Min"></Column> -->
+  <Column field="duration.min" header="Duration Min"></Column>
   <!-- <Column field="duration.q1" header="Duration Q1"></Column> -->
       <Column field="duration.median" header="Duration (ms) Median"></Column>
       <!-- <Column field="duration.q3" header="Duration Q3"></Column> -->
-      <!-- <Column field="duration.max" header="Duration Max"></Column> -->
-      <!-- <Column field="memory.min" header="Memory Min"></Column> -->
+      <Column field="duration.max" header="Duration Max"></Column>
+      <Column field="memory.min" header="Memory Min"></Column>
       <!-- <Column field="memory.q1" header="Memory Q1"></Column> -->
       <Column field="memory.median" header="Memory  Median"></Column>
       <!-- <Column field="memory.q3" header="Memory Q3"></Column> -->
-      <!-- <Column field="memory.max" header="Memory Max"></Column> -->
-      <!-- <Column field="throughput.min" header="Throughput Min"></Column> -->
+      <Column field="memory.max" header="Memory Max"></Column>
+      <Column field="throughput.min" header="Throughput Min"></Column>
       <!-- <Column field="throughput.q1" header="Throughput Q1"></Column> -->
       <Column field="throughput.median" header="Throughput Median"></Column>
       <!-- <Column field="throughput.q3" header="ThroughputQ3"></Column> -->
-      <!-- <Column field="throughput.max" header="Throughput Max"></Column> -->
+      <Column field="throughput.max" header="Throughput Max"></Column>
     </DataTable>
 
 </div>
@@ -62,12 +62,31 @@ const callPrettyBytesSize = (value) => {
 }
 
 
+const callPrettyBytesSizeMin = (value) => {
+  // console.log('pp',value.Size)
+  return prettyBytes(value.min)
+}
+
+const callPrettyBytesSizeMax = (value) => {
+  // console.log('pp',value.Size)
+  return prettyBytes(value.max)
+}
+
+const callPrettyBytesSizeMedium = (value) => {
+  // console.log('pp',value.Size)
+  return prettyBytes(value.medium)
+}
+
 
 </script>
 
 <style scoped>
 .testData {
-  overflow-y:scroll;
+  overflow-y:auto;
+  padding:2rem;
   width: 100%;
+  display:flex;
+  flex-direction:column;
+  gap:2rem;
 }
 </style>

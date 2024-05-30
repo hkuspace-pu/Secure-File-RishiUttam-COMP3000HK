@@ -29,28 +29,6 @@ import {useStore} from '../store/store';
 const store = useStore();
 const speedChart =  ref()
 
-const defaultColors = [
-  '#008FFB',  // blue
-  '#00E396',  // green
-  '#FEB019',  // orange
-  '#FF4560',  // red
-  '#775DD0',  // purple
-  '#3F51B5',  // indigo
-  '#546E7A',  // blue-grey
-  '#D4526E',  // dull pink
-  '#13D8AA',  // teal
-  '#A5978B',  // brown
-  '#4ECDC4',  // turquoise
-  '#C0D6DF',  // light blue
-  '#81D4FA',  // bright blue
-  '#2B908F',  // dark cyan
-  '#F9A3A4',  // light red
-  '#90EE7E',  // light green
-  '#FA4443',  // bright red
-  '#69D2E7',  // bright cyan
-  '#449DD1',  // dark blue
-  '#6E78F7',  // violet
-];
 
 
 
@@ -107,7 +85,7 @@ const throughPutkeys = computed(() => {
         text: "MB",
       },
   },
-    colors: defaultColors,
+    // colors: defaultColors,
 }));
 
   ;

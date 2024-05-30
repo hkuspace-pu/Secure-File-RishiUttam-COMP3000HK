@@ -208,9 +208,7 @@ export const useStore = defineStore("store", {
           },
           
 
-           speedLabels() {
-          
-          },
+       
 
 
     },

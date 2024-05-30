@@ -43,7 +43,7 @@
       </div>
     </div>
 
-    {{ store.statsWithStdDev }}
+    <!-- {{ store.statsWithStdDev }} -->
   </div>
 </template>
 <script setup>
@@ -80,6 +80,7 @@ const optionsLine = ref({
     },
     labels: {
       formatter: (value) => prettyBytes(+value),
+     
     },
   },
 
@@ -90,6 +91,7 @@ const optionsLine = ref({
     },
     labels: {
       formatter: (value) => `${Math.floor(value)}ms`,
+    
     },
   },
   title: {
@@ -167,6 +169,7 @@ const optionsDuration = ref({
         },
       },
     },
+
     boxPlot: {
       colors: {
         upper: "#e9ecef",
