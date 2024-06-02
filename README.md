@@ -1,11 +1,10 @@
-
 # Client-Side Encryption: The Key to Confidentiality for Cloud Storage
 
 Client-Side Encryption: The Key to Confidentiality for Cloud Storage
 
 ### About this project
 
-This project aims to demonstrate how businesses can maintain data privacy controls for data in the Cloud through self-managed encryption keys . Our open-source Crypto-Middleware package is based on the Web Cryptography API, designed for web applications  who require encrypting files on your device before transmission.
+This project aims to demonstrate how businesses can maintain data privacy controls for data in the Cloud through self-managed encryption keys . Our open-source Crypto-Middleware package is based on the Web Cryptography API, designed for web applications who require encrypting files on your device before transmission.
 
 The end result is End-to-End encryption for your sensitive data.
 
@@ -14,18 +13,21 @@ The end result is End-to-End encryption for your sensitive data.
 * Maintain Confidentiality, Integrity & Authenticity
 * Large File Encryption & Decryption
 * High Entropy
-* Browser only,  no server side encryption.
+* Browser only, no server side encryption.
 * Large file encryption & decryption without exhausting memory > 5GB
 * Optional Public Key Encryption to share your secret keys
 
 ## Motives
 
-Cloud breaches have exposed millions of plaintext data across industries, with inherent risks in relying on cloud infrastructure for data security. SecureFile demonstrates this by using our opensource  browser middleware acting as a secure proxy to read, encrypting and save data before it leaves the client's environment, ensuring cloud providers only handle encrypted data without access to decryption keys.
+Cloud breaches have exposed millions of plaintext data across industries, with inherent risks in relying on cloud infrastructure for data security. SecureFile demonstrates this by using our opensource browser middleware acting as a secure proxy to read, encrypting and save data before it leaves the client's environment, ensuring cloud providers only handle encrypted data without access to decryption keys.
 
-## Middlware installation
+## Middleware installation
 
-Install the middleware only
-DOCS : https://www.npmjs.com/package/crypto-middleware 
+Install the middleware only DOCS :
+
+[https://securesend.gitbook.io/crypto-middleware-npm-package](https://securesend.gitbook.io/crypto-middleware-npm-package)
+
+
 
 ## Package Contents
 
@@ -77,7 +79,7 @@ Our tool compares some popular cryptographic js implementation libraries such as
 
 </div>
 
-If you would like to use the cloud to upload your encrypted files, set your AWS keys within the **.env** file located in the project root&#x20;
+If you would like to use the cloud to upload your encrypted files, set your AWS keys within the **.env** file located in the project root
 
 ````
 ```properties
@@ -88,9 +90,9 @@ VITE_APP_S3REGION=<Your S3 Bucket>
 ```
 ````
 
-Currently we support only AWS S3 keys, as a proof of concept, practically we can  support any provider with API/SDK access.
+Currently we support only AWS S3 keys, as a proof of concept, practically we can support any provider with API/SDK access.
 
 {% hint style="info" %}
-Your keys are stored within the  .env file and when required are used in memory only, they are not stored, coped or transmitted anywhere else.   Make sure you set a secure bucket policy and do not use your root access keys. If you do not want to use the Cloud to upload your files, you can toggle to use local disk.\
-&#x20;![](<.gitbook/assets/image (2).png>)
+Your keys are stored within the .env file and when required are used in memory only, they are not stored, coped or transmitted anywhere else. Make sure you set a secure bucket policy and do not use your root access keys. If you do not want to use the Cloud to upload your files, you can toggle to use local disk.\
+![](<.gitbook/assets/image (2).png>)
 {% endhint %}
