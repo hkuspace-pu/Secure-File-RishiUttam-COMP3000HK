@@ -13,33 +13,37 @@ const utils = {
 
       
      async CryptoJS(file) {
-
-      encrypt: {
+     console.log('Running cryptojs')
+ 
       let fileBuffer = await file.arrayBuffer();
       let u8 = new Uint8Array(fileBuffer);
       const wordArray = CryptoJS.lib.WordArray.create(u8);
       const ciphertext = CryptoJS.AES.encrypt(wordArray, passphrase.value);
       let encrypted = new TextEncoder().encode(ciphertext);
       return encrypted
-      }
-      decrypt: {
-        
-      }
+      
 
     },
+    async WebCrypto(file) {
+       console.log('Running webcrypto basic')
+      const encrypted = await secure.encryptFile(file, passphrase.value);
+      return encrypted
+    
+  },
     async SecureSend(file) {
- 
+      console.log('in securee send ' ,passphrase.value)
         const stream = await secure.startStreaming(file, passphrase.value);
       
       return stream
     },
     async OpenPGPStream (file) {
-  
+      console.log('in opepgp ' ,passphrase.value)
       const fileStream = file.stream();
       const message = await openpgp.createMessage({ binary: fileStream });
       const encrypted = await openpgp.encrypt({
         message: message, // input as Message object
-        passwords: [store.passphrase.value], // multiple passwords possible
+        // encryptionKeys: passphrase.value,
+        passwords: [passphrase.value], // multiple passwords possible
         format: "binary", // don't ASCII armor (for Uint8Array output)
       });
       return encrypted
@@ -67,7 +71,23 @@ const utils = {
       cipher.finish();
        return cipher.output.data;
 
-    }
+    },
+
+    async OpenPGPStreamDecrypt(file,passphrase) {
+      console.log('OPENPGP Decrypt Stream')
+      console.log(passphrase)
+      const fileStream = file.stream();
+      const message = await openpgp.readMessage({ binaryMessage: fileStream });
+  
+      const decrypted = await openpgp.decrypt({
+        message: message,
+        passwords: [passphrase], // multiple passwords possible
+        format: "binary", // don't ASCII armor (for Uint8Array output)
+        // config: {allowUnauthenticatedStream: true},
+      });
+      return decrypted.data
+  
+    },
 
 
     // more functions as needed

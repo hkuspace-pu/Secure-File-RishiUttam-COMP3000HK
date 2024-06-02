@@ -1,42 +1,41 @@
 <template>
-  <div class="container" @dragover.prevent  @drop.prevent draggable @drop="handleDrop">
+  <div class="container">
     <Dialog></Dialog>
+    <!-- <div class="openAWS">H1</div> -->
+    <Button class="openAWS" icon="pi pi-bars" @click="awsVisible = true" />
     <!-- <Settings></Settings> -->
     <Toast />
     <div class="boxContainer">
       <div class="box">
         <div v-show="activeTab === 0" class="radio">
-          
-                <InputSwitch inputClass="radio" v-model="store.isCloud" /><div class="cloud"><span v-if="store.isCloud">Cloud</span><span v-else>Disk</span></div>
-        
-              </div>
+          <InputSwitch inputClass="radio" v-model="store.isCloud" />
+          <div class="cloud">
+            <span v-if="store.isCloud">Cloud</span><span v-else>Disk</span>
+          </div>
+        </div>
         <div class="tabMenu">
-  
           <TabMenu v-model:activeIndex="activeTab" :model="items" />
         </div>
 
-        <div draggable   class="encryptBox" v-if="activeTab === 0" id="encrypt">
+        <div draggable class="encryptBox" v-if="activeTab === 0" id="encrypt">
           <div v-show="!inProgress">
             <FileUpload
               chooseLabel="Select File"
               mode="basic"
               name="demo[]"
               ref="fileInput"
-
               id="fileInput"
-  
             >
             </FileUpload>
           </div>
           <progress v-show="inProgress"></progress>
           <apexchart
-          type="radialBar"
-          height="220px"
-          ref="radialRef"
-          :options="radialOptions"
-          :series="radialSeries"
-        ></apexchart>
-
+            type="radialBar"
+            height="220px"
+            ref="radialRef"
+            :options="radialOptions"
+            :series="radialSeries"
+          ></apexchart>
 
           <FloatLabel>
             <Password
@@ -49,6 +48,13 @@
           </FloatLabel>
 
           <div class="submenu">
+            <!-- <button
+              :disabled="!fileInput?.files[0]"
+              @click="bigEncryptFn('WebCrypto')"
+              id="encryptButton"
+            >
+              Native Web Crypto
+            </button> -->
             <button
               :disabled="!fileInput?.files[0]"
               @click="uploadOnly"
@@ -84,7 +90,9 @@
               Standford
             </button>
 
-            <button @click="bigEncryptFn('Forge')" id="encryptButton">Forge</button>
+            <button @click="bigEncryptFn('Forge')" id="encryptButton">
+              Forge
+            </button>
 
             <!-- <button @click="genKey" id="encryptButton">GenKey</button> -->
             <!-- <button @click="encryptPassPhrase " id="encryptButton">RSAPassphrase</button> -->
@@ -105,18 +113,17 @@
           >
           </FileUpload>
 
-                   <progress v-show="inProgress"></progress>
+          <progress v-show="inProgress"></progress>
           <apexchart
-          type="radialBar"
-          height="220px"
-          ref="radialRef"
-          :options="radialOptions"
-          :series="radialSeries"
-        ></apexchart>
+            type="radialBar"
+            height="220px"
+            ref="radialRef"
+            :options="radialOptions"
+            :series="radialSeries"
+          ></apexchart>
 
           <div class="radioOptions">
             <input
-           
               type="radio"
               id="passphrase"
               value="passphrase"
@@ -159,15 +166,23 @@
               name="demo[]"
             />
           </div>
-          .
-
+<div class="decryptButton">
           <button
             :disabled="checkDisabledDecrypt"
-            @click="fileInputDecryptFn"
+            @click="fileInputDecryptFn('SecureSend:Dec')"
             id="decryptButton"
           >
-            Decrypt
+            Decrypt SecureSend
           </button>
+               <button v-if="decryptMethod ==='passphrase'"
+            :disabled="checkDisabledDecrypt"
+            @click="fileInputDecryptFn('OpenPGP:Dec')"
+            id="decryptButton"
+          >
+            Decrypt OpenPGP
+          </button>
+        </div>
+
         </div>
       </div>
 
@@ -179,7 +194,7 @@
 
         <apexchart
           type="line"
-        height="95%"
+          height="95%"
           ref="chart"
           :options="chartOptions"
           :series="series"
@@ -189,63 +204,62 @@
     </div>
 
     <div class="boxContainer two">
-      <!-- <a ref="downloadLink" id="downloadLink" style="display: none"
-        >Download file</a
-      > -->
-
       <div class="box">
-       
-
         <apexchart
           ref="mixedChartRef"
-        height="100%"
-
+          height="100%"
           :options="barChartTimerOptions"
           :series="timers"
         ></apexchart>
       </div>
 
- 
-      <TestData />
+      <SpeedGraph />
     </div>
 
-<Plots/>
+    <Plots />
 
-    <div class="refreshIcon">
-      <i @click="listFiles" style="font-size: 1.5rem" class="pi pi-sync"></i>
-      <h4>AWS Console File List</h4>
-    </div>
+    <Sidebar style="width: 35%" position="right" v-model:visible="awsVisible">
+      <div v-if="data" class="showList">
+        <div class="refreshIcon">
+          <i
+            @click="listFiles"
+            style="font-size: 1.5rem"
+            class="pi pi-sync"
+          ></i>
+          <h4>AWS Console File List</h4>
+        </div>
+        <DataTable
+          resizableColumns
+          lazy
+          showGridlines
+          stripedRows
+          :value="data.Contents"
+        >
+          <Column field="Key" header="Filename"></Column>
+          <Column :field="callPrettyBytes" header="Size"></Column>
+          <Column header="Decrypt">
+            <template #body="slotProps">
+              <i
+                @click="downloadFile(slotProps.data, 1)"
+                class="pi pi-cloud-download"
+              ></i>
+            </template>
+          </Column>
 
-    <div v-if="data" class="showList">
-      <DataTable
-        resizableColumns
-        lazy
-        stripedRows
-        :value="data.Contents"
-        tableStyle="min-width:60rem"
-      >
-        <!-- <Column v-for="col of columns" :key="col.field" :field="col.field" :header="col.header"></Column> -->
-        <Column>
-          <template #body="slotProps">
-            <i
-              @click="downloadFile(slotProps.data)"
-              class="pi pi-cloud-download"
-            ></i>
-            <i
-              @click="downloadFileUnecrypted(slotProps.data)"
-              class="pi pi-cloud-download"
-            ></i>
-            <!-- <i @click="decrypt(slotProps.data)" class="pi pi-cloud-download"></i> -->
-          </template>
-        </Column>
-        <Column field="Key" header="Filename"></Column>
-        <Column :field="callPrettyBytes" header="Size"></Column>
-        <Column field="LastModified" header="Upload Date"></Column>
-      </DataTable>
-    </div>
-
-<!-- <div>{{calculateStats()}}</div> -->
-
+          <Column header="Download">
+            <template #body="slotProps">
+              <i
+                @click="downloadFile(slotProps.data, 0)"
+                class="pi pi-cloud-download"
+              ></i>
+            </template>
+          </Column>
+          <!-- <Column field="LastModified" header="Upload Date"></Column> -->
+        </DataTable>
+      </div>
+    </Sidebar>
+    <!-- <div>{{calculateStats()}}</div> -->
+    <TestData />
     <!-- <Button label="Submit" /> -->
     <div class="foot">
       <p>
@@ -272,29 +286,31 @@ import Password from "primevue/password";
 import FloatLabel from "primevue/floatlabel";
 import TabMenu from "primevue/tabmenu";
 import { useToast } from "primevue/usetoast";
-
+import Sidebar from "primevue/sidebar";
 
 const toast = useToast();
 const store = useStore();
-
+const awsVisible = ref(false);
 
 const client = new S3Client({
   region: "ap-east-1",
   credentials: {
     accessKeyId: import.meta.env.VITE_APP_accessKeyId,
-    secretAccessKey: import.meta.env.VITE_APP_MY_secretAccessKey ,
+    secretAccessKey: import.meta.env.VITE_APP_MY_secretAccessKey,
   },
 });
 import Dialog from "./components/Dialog.vue";
 import Settings from "./components/Settings.vue";
+import SpeedGraph from "./components/SpeedGraph.vue";
+
 import TestData from "./components/TestData.vue";
 import Plots from "./components/Plots.vue";
 import Button from "primevue/button";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
 
-import InputSwitch from 'primevue/inputswitch';
-import utils from './encryptFunctions/utils.js'
+import InputSwitch from "primevue/inputswitch";
+import utils from "./encryptFunctions/utils.js";
 let inProgress = ref(false);
 let decryptMethod = ref("passphrase");
 let copyText = ref("Copy Symmetric key");
@@ -333,69 +349,84 @@ const testResults = computed({
   set: (value) => store.testResults(value), //
 });
 
-
-
-
-const bigEncryptFn = async (type)=> {
+const bigEncryptFn = async (type) => {
   try {
-  inProgress.value = true
-  radialRef.value.resetSeries()
+    inProgress.value = true;
+    radialRef.value.resetSeries();
 
-  const file = fileInput.value.files[0];
-  const totalBytes = file.size;
-  const fileName = file.name;
-  let returnedData = false
-  console.log(`${type} test started`)
-  const currentMemory = window.performance.memory.usedJSHeapSize;
-  console.log('currentMemory',currentMemory)
-  returnMaxMem()
-  const checkMem = setInterval(returnMaxMem, 500);
-  const startTime = performance.now()
+    const file = fileInput.value.files[0];
+    const totalBytes = file.size;
+    const fileName = file.name;
+    let returnedData = false;
+    console.log(`${type} test started`);
+    const currentMemory = window.performance.memory.usedJSHeapSize;
+    console.log("currentMemory", currentMemory);
+    returnMaxMem();
+    const checkMem = setInterval(returnMaxMem, 500);
+    const startTime = performance.now();
 
-  const encrypted = await utils[type](file)
+    const encrypted = await utils[type](file);
 
-if (store.isCloud) {
-   await uploadS3(fileName, totalBytes, encrypted, type);
-} else {
-    
-    returnedData = await downloadToDisk(fileName, totalBytes, encrypted, type)
-}
-returnMaxMem()
-await nextTick()
-const endTime = performance.now();
-clearInterval(checkMem);
-console.log('Returned Data:', returnedData)
+    if (store.isCloud) {
+      await uploadS3(fileName, totalBytes, encrypted, type);
+    } else {
+      returnedData = await downloadToDisk(
+        fileName,
+        totalBytes,
+        encrypted,
+        type
+      );
+    }
+    returnMaxMem();
+    const endTime = performance.now();
 
-const duration = returnedData || parseFloat((endTime - startTime).toFixed(2));
-console.log(`${type} took ${duration} ms.`);
-const maxMemory = Math.max(...usageHighMem.value) - currentMemory;
-console.log(`${type} Memory: ${maxMemory}`)
-timers.value[0].data.push(duration);
-timers.value[1].data.push(maxMemory);
-usageHighMem.value = [];
+    clearInterval(checkMem);
+    console.log("Returned Data:", returnedData);
 
-addRunData(type, totalBytes, maxMemory, duration);
-  }catch(e) {
+    const duration =
+      returnedData || parseFloat((endTime - startTime).toFixed(2));
+    console.log(`${type} took ${duration} ms.`);
+    const maxMemory = Math.max(...usageHighMem.value) - currentMemory;
+    console.log(`${type} Memory: ${maxMemory}`);
+
+    if (timers.value[0].data.length >= 5) {
+      timers.value[0].data.shift();
+      timers.value[1].data.shift();
+      let currentTypes = mixedChartRef.value.options.xaxis.categories;
+      currentTypes.shift();
+      mixedChartRef.value.updateOptions({
+        xaxis: {
+          categories: currentTypes,
+        },
+      });
+    }
+    timers.value[0].data.push(duration);
+    timers.value[1].data.push(maxMemory);
+
+    usageHighMem.value = [];
+
+    // let currentTypes = mixedChartRef.value.options.xaxis.categories;
+    // currentTypes.push(type);
+    // mixedChartRef.value.updateOptions({
+    //   xaxis: {
+    //     categories: currentTypes,
+    //   },
+    // });
+
+    addRunData(type, totalBytes, maxMemory, duration);
+  } catch (e) {
     console.log(e);
     toast.add({
       severity: "error",
       summary: "Failed",
-      detail: `OpenPGP Buffer Error- ${e}`,
+      detail: `${type} Error- ${e}`,
       life: 4000,
     });
   } finally {
     inProgress.value = false;
-  } 
-}
+  }
+};
 
-
-
-
-const handleDrop = (event) => {
-  event.preventDefault();
-  fileInput.value  = event.dataTransfer.files
-  console.log('DROPPED')
-}
 const barChartTimerOptions = ref({
   chart: {
     // height: "100"
@@ -405,7 +436,7 @@ const barChartTimerOptions = ref({
   plotOptions: {
     bar: {
       // height: "600"
-      // columnWidth: "25%",
+      columnWidth: "30%",
     },
   },
   xaxis: {
@@ -461,27 +492,21 @@ const radialOptions = ref({
     id: "radial",
     type: "radialBar",
     animations: {
+      enabled: false,
+      easing: "easeinout",
+      speed: 1000,
+      animateGradually: {
         enabled: false,
-        easing: 'easeinout',
-        speed: 1000,
-        animateGradually: {
-            enabled: false,
-            delay: 0
-        },
-        dynamicAnimation: {
-            enabled: false,
-            speed: 350
-        }
-    }
- 
-    
+        delay: 0,
+      },
+      dynamicAnimation: {
+        enabled: false,
+        speed: 350,
+      },
+    },
   },
   labels: ["Progress"],
- 
 });
-
-
-
 
 const chartOptions = ref({
   chart: {
@@ -497,7 +522,7 @@ const chartOptions = ref({
       },
     },
     toolbar: {
-      show: true,
+      show: false,
     },
     legend: {
       show: true,
@@ -646,14 +671,10 @@ const uploadOnly = async () => {
   }
 };
 
-
-
 const returnMaxMem = () => {
   //get the memory from window.performance.memory.jsheapmemory
 
   usageHighMem.value.push(window.performance.memory.usedJSHeapSize);
-
-
 };
 
 const updateMemoryInfo = async () => {
@@ -681,13 +702,10 @@ const updateMemoryInfo = async () => {
 
 onMounted(async () => {
   setInterval(updateMemoryInfo, 1000); // Update every second
-    //  const worker = new Worker(new URL('./workers/checkMem.js', import.meta.url))
+  //  const worker = new Worker(new URL('./workers/checkMem.js', import.meta.url))
   //  const mem = await performance.measureUserAgentSpecificMemory()
- 
-
+  // window.addEventListener('encryptionComplete', handleEncryptionComplete);
 });
-
-
 
 const uploadS3 = async (fileName, totalBytes, stream, type) => {
   try {
@@ -711,7 +729,7 @@ const uploadS3 = async (fileName, totalBytes, stream, type) => {
       labels: ["Uploading"],
     });
 
-     await uploader.done();
+    await uploader.done();
     radialRef.value.updateOptions({
       labels: ["Uploaded"],
     });
@@ -766,16 +784,22 @@ const clearFile = async () => {
   radialSeries.value = [0];
 };
 
-const fileInputDecryptFn = async () => {
+const fileInputDecryptFn = async (type) => {
   try {
-    console.log('In decrypt function')
+    console.log("In decrypt function");
+    radialRef.value.resetSeries();
     const file = fileInputDecrypt.value.files[0];
+    const totalBytes = file.size;
+    const fileName = file.name;
+
+    const fileHandle = await window.showSaveFilePicker({
+        suggestedName: `${fileName}`,
+        startIn: "downloads",
+      });
+      const writable = await fileHandle.createWritable();
+
     const fileStream = file.stream();
 
-  
-    const fileHandle = await window.showSaveFilePicker();
-    const writable = await fileHandle.createWritable();
-  
     let decryptStream;
     if (decryptMethod.value === "passphrase") {
       decryptStream = await secure.decryptStream(passphrase.value);
@@ -793,36 +817,73 @@ const fileInputDecryptFn = async () => {
       console.log("DECRYPTED KEY", decryptedSharedKey);
       // const privateKey = await privateKeyFile.text();
       // console.log(privateKey)
+
+     
       decryptStream = await secure.decryptStream(decryptedSharedKey);
     }
-
-    console.log('filzeSize', file.size)
 
     let downloadedSize = 0;
     const progressStream = new TransformStream({
       transform(chunk, controller) {
+
         downloadedSize += chunk.byteLength;
-  
-        awsProgress.value = Math.round(
-          (downloadedSize / file.size) * 99
-        );
+
+        awsProgress.value = Math.round((downloadedSize / file.size) * 99);
         // console.log(awsProgress.value)
         radialSeries.value[0] = awsProgress.value;
         controller.enqueue(chunk);
       },
     });
-        await fileStream.pipeThrough(decryptStream).pipeThrough(progressStream).pipeTo(writable)
+
+    usageHighMem.value = [];
+    const currentMemory = window.performance.memory.usedJSHeapSize;
+    returnMaxMem();
+    const checkMem = setInterval(returnMaxMem, 500);
+
+    const startTime = performance.now();
 
 
-        awsProgress.value = 100
-        radialSeries.value[0] = 100
-        radialRef.value.updateOptions({
+
+if (type === 'SecureSend:Dec') {
+    await fileStream.pipeThrough(decryptStream).pipeThrough(progressStream).pipeTo(writable);
+}else {
+  console.log('OpenPGP Decryption')
+  decryptStream = await utils.OpenPGPStreamDecrypt(file,passphrase.value)
+  console.log(decryptStream)
+  await decryptStream.pipeThrough(progressStream).pipeTo(writable);
+}
+    const endTime = performance.now();
+    returnMaxMem();
+    clearInterval(checkMem);
+    const duration = parseFloat((endTime - startTime).toFixed(2));
+    const maxMemory = Math.max(...usageHighMem.value) - currentMemory;
+    if (timers.value[0].data.length >= 5) {
+      timers.value[0].data.shift();
+      timers.value[1].data.shift();
+      let currentTypes = mixedChartRef.value.options.xaxis.categories;
+      currentTypes.shift();
+      mixedChartRef.value.updateOptions({
+        xaxis: {
+          categories: currentTypes,
+        },
+      });
+    }
+    timers.value[0].data.push(duration);
+    timers.value[1].data.push(maxMemory);
+        usageHighMem.value = [];
+
+
+        addRunData(type, totalBytes, maxMemory, duration);
+
+
+    awsProgress.value = 100;
+    radialSeries.value[0] = 100;
+    radialRef.value.updateOptions({
       labels: ["Done!"],
-    });  
-
+    });
 
     // const decryptedStream = fileStream.pipeThrough(decryptStream);
-console.log('Decryption completed')
+    console.log("Decryption completed");
     // await decryptedStream.pipeTo(writable);
     toast.add({
       severity: "success",
@@ -830,9 +891,8 @@ console.log('Decryption completed')
       detail: "Decryption OK!",
       life: 4000,
     });
-
-
   } catch (e) {
+    console.log(e.message)
     toast.add({
       severity: "error",
       summary: "Failed",
@@ -859,7 +919,7 @@ const callPrettyBytes = (value) => {
   return prettyBytes(value.Size);
 };
 
-const downloadFile = async (rowData) => {
+const downloadFile = async (rowData, isDecrypt) => {
   const { Key } = rowData;
   try {
     const fileHandle = await window.showSaveFilePicker({
@@ -869,7 +929,9 @@ const downloadFile = async (rowData) => {
     const writable = await fileHandle.createWritable();
 
     //get the object from s3 streaming
-
+    radialRef.value.updateOptions({
+      labels: ["Downloading"],
+    });
     const params = {
       Bucket: "securesend2",
       Key: Key,
@@ -877,26 +939,57 @@ const downloadFile = async (rowData) => {
 
     const dl = new GetObjectCommand(params);
     const response = await client.send(dl);
-    const { Body } = response.Body;
+    const Body = response.Body;
 
-    const decryptStream = await secure.decryptStream(passphrase.value);
-    // console.log('DECRYPT STREAM', decryptStream)
-    const decryptedStream = Body.pipeThrough(decryptStream);
+    let downloadedSize = 0;
 
-    await decryptedStream.pipeTo(writable);
+    const progressStream = new TransformStream({
+      transform(chunk, controller) {
+        downloadedSize += chunk.byteLength;
+        // const progress = downloadedSize / response.ContentLength;
+        awsProgress.value = Math.round(
+          (downloadedSize / response.ContentLength) * 100
+        );
+        radialSeries.value[0] = awsProgress.value;
+        controller.enqueue(chunk);
+      },
+    });
+
+    if (isDecrypt) {
+      const decryptStream = await secure.decryptStream(passphrase.value);
+      // console.log('DECRYPT STREAM', decryptStream)
+      // const decryptedStream = await Body.pipeThrough(decryptStream)
+      // await decryptedStream.pipeThrough(progressStream).pipeTo(writable);
+
+      await Body.pipeThrough(decryptStream)
+        .pipeThrough(progressStream)
+        .pipeTo(writable);
+
+      // await decryptedStream.pipeTo(writable);
+    } else {
+      await Body.pipeThrough(progressStream).pipeTo(writable);
+    }
+
+    radialRef.value.updateOptions({
+      labels: ["Downloaded"],
+    });
+
+    toast.add({
+      severity: "success",
+      summary: "Success",
+      detail: "Decryption Success",
+      life: 4000,
+    });
   } catch (e) {
     console.log(e);
     toast.add({
       severity: "error",
       summary: "Failed",
-      detail: `Decryption Failed - ${e}`,
+      detail: `Failed - ${e}`,
       life: 4000,
     });
   }
 };
-
-
- 
 
 const downloadFileUnecrypted = async (rowData) => {
   try {
@@ -920,6 +1013,7 @@ const downloadFileUnecrypted = async (rowData) => {
     const dl = new GetObjectCommand(params);
     const response = await client.send(dl);
     const Body = response.Body;
+
     let downloadedSize = 0;
     const progressStream = new TransformStream({
       transform(chunk, controller) {
@@ -949,73 +1043,62 @@ const downloadFileUnecrypted = async (rowData) => {
   }
 };
 
-
-
-
-
-
-const downloadToDisk =  async (fileName, totalBytes, obj, type) => {
-
+const downloadToDisk = async (fileName, totalBytes, obj, type) => {
   //METHOD ONE WRITABLE
   try {
-console.log('Dl Direct to Disk')
+    console.log("Dl Direct to Disk");
 
     function isStream(obj) {
-  return obj instanceof ReadableStream || obj instanceof WritableStream || (obj && obj.readable instanceof ReadableStream && obj.writable instanceof WritableStream);
-}
-  
-console.log('Is Stream?',isStream(obj))
+      return (
+        obj instanceof ReadableStream ||
+        obj instanceof WritableStream ||
+        (obj &&
+          obj.readable instanceof ReadableStream &&
+          obj.writable instanceof WritableStream)
+      );
+    }
 
-if (!isStream(obj)) {
-  const blob = new Blob([obj]);
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `${type}-${fileName}`
-  link.click();
-  URL.revokeObjectURL(link.href);
-  
-} else {
-  console.log('This is a streaming dl')
-  usageHighMem.value = [];
-  const fileHandle = await window.showSaveFilePicker({
-      suggestedName: `${type}-${fileName}`,
-      startIn: "downloads",
-    });
+    console.log("Is Stream?", isStream(obj));
 
-    const writable = await fileHandle.createWritable();
-    
-    console.log('Now Getting time for stream')
-    const startTime = performance.now()
+    if (!isStream(obj)) {
+      const blob = new Blob([obj]);
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `${type}-${fileName}`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } else {
+      usageHighMem.value = [];
 
-//Build up the progress passthrough stream
-let downloadedSize = 0;
-    const progressStream = new TransformStream({
-      transform(chunk, controller) {
-    
-        downloadedSize += chunk.length;
-  
-        awsProgress.value = Math.round(
-          (downloadedSize / totalBytes) * 100
-        );
-        // console.log(awsProgress.value)
-        radialSeries.value[0] = awsProgress.value;
-        controller.enqueue(chunk);
-      },
-    });
+      const fileHandle = await window.showSaveFilePicker({
+        suggestedName: `${type}-${fileName}.enc`,
+        startIn: "downloads",
+      });
 
+      const writable = await fileHandle.createWritable();
 
+      console.log("Now Getting time for stream");
+      const startTime = performance.now();
+      //Build up the progress passthrough stream
+      let downloadedSize = 0;
 
+      const progressStream = new TransformStream({
+        transform(chunk, controller) {
+          downloadedSize += chunk.length;
 
-    //Starts the stream
-    await obj.pipeThrough(progressStream).pipeTo(writable);
+          awsProgress.value = Math.round((downloadedSize / totalBytes) * 100);
+          // console.log(awsProgress.value)
+          radialSeries.value[0] = awsProgress.value;
+          controller.enqueue(chunk);
+        },
+      });
 
-    const endTime = performance.now();
-    const duration = parseFloat((endTime - startTime).toFixed(2));
-    return duration
-
-}
-  
-} catch (e) {
+      await obj.pipeThrough(progressStream).pipeTo(writable);
+      const endTime = performance.now();
+      const duration = parseFloat((endTime - startTime).toFixed(2));
+      return duration;
+    }
+  } catch (e) {
     console.log(e);
     toast.add({
       severity: "error",
@@ -1026,8 +1109,7 @@ let downloadedSize = 0;
   } finally {
     inProgress.value = false;
   }
-
-}
+};
 
 const checkDisabledDecrypt = computed(() => {
   if (decryptMethod.value == "passphrase") {
@@ -1039,49 +1121,45 @@ const checkDisabledDecrypt = computed(() => {
   }
 });
 
- 
-
 async function addRunData(type, totalBytes, memory, duration) {
+  // const bytesToMegabytes = 1024 * 1024;
+  // const millisecondsToSeconds = 1000;
 
   testResults.value.push({
     software: type,
     fileSize: totalBytes,
+    throughput: ((totalBytes / 1024 / 1024 / duration) * 1000).toFixed(2),
     memory: memory,
     duration: duration,
   });
 
-
- 
-
   // Assuming chart is a reference to your chart
   setTimeout(() => {
-  let latestIndex = series.value[0].data.length - 1;
+    let latestIndex = series.value[0].data.length - 1;
 
-  let x = series.value[0].data[latestIndex][0]
-  let y = series.value[0].data[latestIndex][1]
-// //   let latestValue = memory;
+    let x = series.value[0].data[latestIndex][0];
+    let y = series.value[0].data[latestIndex][1];
+    // //   let latestValue = memory;
 
-chart.value.addPointAnnotation({
-  x: x,
-  y: y,
-  label: {
-    text: type,
-         style: {
-                    color: '#fff',
-                    background: '#00E396',
-                     fontSize: '16px'
-                  },
-  },
-})
+    chart.value.addPointAnnotation({
+      x: x,
+      y: y,
+      label: {
+        text: type,
+        style: {
+          color: "#fff",
+          background: "#00E396",
+          fontSize: "16px",
+        },
+      },
+    });
   }, 250);
 }
 
-
-
 watch(highestMem, (newValue, oldValue) => {
-      // console.log(`Mem Changed ${oldValue} to ${newValue}`);
-      if (newValue > 500000000) {
-        console.log('updating chart')
+  // console.log(`Mem Changed ${oldValue} to ${newValue}`);
+  if (newValue > 500000000) {
+    console.log("updating chart");
     chart.value.updateOptions({
       yaxis: {
         max: newValue + 1000000,
@@ -1093,10 +1171,7 @@ watch(highestMem, (newValue, oldValue) => {
       },
     });
   }
-      
-   
-    });
-    
+});
 </script>
 
 <style>
@@ -1111,14 +1186,23 @@ html body {
 .container {
   display: flex;
   flex-direction: column;
+  position: relative;
   /* height: 100%; */
-/* border:1px solid red; */
-/* height: 100vh; */
+  /* border:1px solid red; */
+  /* height: 100vh; */
+}
+
+.openAWS {
+  position: absolute;
+  top: 10px;
+  color: black;
+  right: 0;
+  border: 0;
 }
 
 .showList {
-  padding: 1rem;
-  margin: 0.5rem;
+  /* padding: 1rem; */
+  /* margin: 0.5rem; */
 }
 
 .refreshIcon {
@@ -1126,8 +1210,8 @@ html body {
   align-items: center;
   gap: 1rem;
   cursor: pointer;
-  margin-top: 0.5rem;
-  margin-left: 2rem;
+  /* margin-top: 0.5rem; */
+  /* margin-left: 2rem; */
 }
 .boxContainer {
   display: flex;
@@ -1136,16 +1220,14 @@ html body {
   /* flex:1; */
   flex-shrink: 0;
   height: 550px;
+  /* width: 100%; */
   /* overflow:scroll; */
   /* border:2px solid green; */
   flex-direction: row;
-
-  
 }
 
 .two {
   height: 350px;
-
 }
 
 .tabMenu {
@@ -1156,26 +1238,14 @@ html body {
   /* width: 100%; */
 }
 .box {
-  /* border: 1px solid red; */
   padding: 12px;
-  /* margin:auto; */
   border-radius: 5px;
   display: flex;
-  /* justify-content:space-evenly; */
   gap: 5px;
-  /* width: 100%; */
-  /* height:100%; */
- width: 650px;
-
-/* height: 800px; */
-  /* height: fit-content; */
+  width: 650px;
   flex-direction: column;
-  /* align-items:center; */
-  /* border:1px solid red; */
   border: 1px solid rgb(230, 230, 230);
   box-shadow: 0px 10px 15px -3px rgba(0, 0, 0, 0.1);
-  /* height: 400px; */
-
 }
 
 .radial {
@@ -1183,6 +1253,12 @@ html body {
   height: fit-content;
 }
 
+
+.decryptButton {
+  display:flex;
+  gap:10px;
+  flex-direction:row;
+}
 .wide {
   /* margin:auto; */
   /* flex:2; */
@@ -1193,9 +1269,9 @@ html body {
   display: flex;
   flex-direction: row;
   gap: 1rem;
-  font-weight:bold;
+  font-weight: bold;
   /* text-emphasis: bold; */
-  font-size:14px;
+  font-size: 14px;
 }
 .box input {
   padding: 7px;
@@ -1217,7 +1293,7 @@ html body {
   flex-direction: row;
   /* border:1px solid red; */
   gap: 1rem;
-  margin-bottom:1.5rem;
+  margin-bottom: 1.5rem;
   /* justify-content:space-between; */
 }
 
@@ -1264,20 +1340,19 @@ button {
   background-color: #2563eb;
 }
 
-
 .radio {
-  display:flex;
-  align-items:center;
+  display: flex;
+  align-items: center;
   /* justify-content:center; */
-  gap:0.5rem;
-  margin:2px;
+  gap: 0.5rem;
+  margin: 2px;
 }
 
 .cloud {
-  font-size:12px;
-  padding:4px 6px;
-  background-color:green;
-  border-radius:6px;
-  color:white;
+  font-size: 12px;
+  padding: 4px 6px;
+  background-color: green;
+  border-radius: 6px;
+  color: white;
 }
 </style>
