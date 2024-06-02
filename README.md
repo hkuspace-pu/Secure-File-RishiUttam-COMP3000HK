@@ -29,6 +29,8 @@ Install the middleware only DOCS :
 
 ## SecureSend - Demo Application
 
+Live demo : [https://securefile-rishi.pages.dev/](https://securefile-rishi.pages.dev/) (Save to disk only)
+
 <figure><img src=".gitbook/assets/securesend2.gif" alt=""><figcaption><p>Demo application with performance benchmark suite</p></figcaption></figure>
 
 ## Package Contents
