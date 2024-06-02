@@ -27,7 +27,9 @@ Install the middleware only DOCS :
 
 [https://securesend.gitbook.io/crypto-middleware-npm-package](https://securesend.gitbook.io/crypto-middleware-npm-package)
 
+## SecureSend - Demo Application
 
+<figure><img src=".gitbook/assets/securesend2.gif" alt=""><figcaption><p>Demo application with performance benchmark suite</p></figcaption></figure>
 
 ## Package Contents
 
